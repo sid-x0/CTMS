@@ -66,7 +66,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
-    loadData();
+    if (user?.access_token) {
+      loadData();
+    } else {
+      setLoading(false);
+    }
   }, [user?.user_role, user?.access_token]);
 
   const navigateTab = (tab: string, studyId?: number) => {

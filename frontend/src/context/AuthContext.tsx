@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { fetchAPI } from "@/lib/api";
 
 export type RoleType =
@@ -21,20 +22,9 @@ export interface UserSession {
   access_token: string;
 }
 
-const MOCK_ROLE_USERS: Record<RoleType, { email: string; name: string }> = {
-  "Administrator": { email: "admin@aiia.gov.in", name: "Dr. Tanuja Nesari" },
-  "Principal Investigator": { email: "pi@aiia.gov.in", name: "Dr. Mahesh Vyas" },
-  "Study Coordinator": { email: "coordinator@aiia.gov.in", name: "Priya Sharma" },
-  "Clinical Trial Monitor": { email: "monitor@cro.org", name: "Rajesh Kumar" },
-  "Ethics Committee Member": { email: "ethics@aiia.gov.in", name: "Dr. S. K. Gupta" },
-  "Pharmacovigilance User": { email: "pv@aiia.gov.in", name: "Dr. Vikram Singh" },
-  "Regulator / Read-only User": { email: "regulator@ayush.gov.in", name: "Inspector R. C. Verma" }
-};
-
 interface AuthContextType {
   user: UserSession | null;
   login: (email: string, password: string) => Promise<void>;
-  switchRole: (role: RoleType) => Promise<void>;
   logout: () => void;
   loading: boolean;
   error: string | null;
@@ -46,43 +36,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserSession | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    const initAuth = async () => {
-      let activeRole: RoleType = "Administrator";
-      const saved = typeof window !== "undefined" ? localStorage.getItem("ctms_user_session") : null;
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.user_role) {
-            activeRole = parsed.user_role;
-            setUser(parsed);
-          }
-        } catch (e) {
-          localStorage.removeItem("ctms_user_session");
-        }
-      } else {
-        const defaultUser = MOCK_ROLE_USERS["Administrator"];
-        const initialSession: UserSession = {
-          user_id: 1,
-          user_name: defaultUser.name,
-          user_email: defaultUser.email,
-          user_role: "Administrator",
-          organization: "All India Institute of Ayurveda",
-          access_token: ""
-        };
-        setUser(initialSession);
+    const verifyExistingSession = async () => {
+      if (typeof window === "undefined") return;
+
+      const token = localStorage.getItem("ctms_jwt_token");
+      const savedSessionStr = localStorage.getItem("ctms_user_session");
+
+      if (!token || !savedSessionStr) {
+        // No session exists
+        setUser(null);
+        setLoading(false);
+        return;
       }
 
       try {
-        await switchRole(activeRole);
-      } catch (e) {
-        console.error("Auth initialization error:", e);
+        // Verify token with backend /auth/me
+        const me = await fetchAPI("/auth/me");
+        if (me && me.id) {
+          const verifiedSession: UserSession = {
+            user_id: me.id,
+            user_name: me.name,
+            user_email: me.email,
+            user_role: me.role as RoleType,
+            organization: me.organization || "All India Institute of Ayurveda",
+            access_token: token,
+          };
+          localStorage.setItem("ctms_user_session", JSON.stringify(verifiedSession));
+          setUser(verifiedSession);
+        } else {
+          throw new Error("Invalid session response");
+        }
+      } catch (err) {
+        console.warn("Session verification failed. Invalidating token.", err);
+        localStorage.removeItem("ctms_jwt_token");
+        localStorage.removeItem("ctms_user_session");
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
-    initAuth();
+
+    verifyExistingSession();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -90,16 +88,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await fetchAPI("/auth/login/json", {
         method: "POST",
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
       });
+
       const session: UserSession = {
         user_id: res.user_id,
         user_name: res.user_name,
         user_email: res.user_email,
         user_role: res.user_role as RoleType,
-        organization: res.organization,
-        access_token: res.access_token
+        organization: res.organization || "All India Institute of Ayurveda",
+        access_token: res.access_token,
       };
+
       localStorage.setItem("ctms_jwt_token", res.access_token);
       localStorage.setItem("ctms_user_session", JSON.stringify(session));
       setUser(session);
@@ -109,42 +109,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const switchRole = async (role: RoleType) => {
-    setError(null);
-    const targetUser = MOCK_ROLE_USERS[role];
-    if (!targetUser) return;
-
-    try {
-      const res = await fetchAPI("/auth/login/json", {
-        method: "POST",
-        body: JSON.stringify({ email: targetUser.email, password: "Password123!" })
-      });
-      const session: UserSession = {
-        user_id: res.user_id,
-        user_name: res.user_name,
-        user_email: res.user_email,
-        user_role: res.user_role as RoleType,
-        organization: res.organization,
-        access_token: res.access_token
-      };
-      localStorage.setItem("ctms_jwt_token", res.access_token);
-      localStorage.setItem("ctms_user_session", JSON.stringify(session));
-      setUser(session);
-    } catch (err: any) {
-      console.error("Backend login failed for role persona:", err);
-      setError(err.message || "Failed to authenticate with backend");
-      throw err;
-    }
-  };
-
   const logout = () => {
     localStorage.removeItem("ctms_jwt_token");
     localStorage.removeItem("ctms_user_session");
     setUser(null);
+    router.replace("/login");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, switchRole, logout, loading, error }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, error }}>
       {children}
     </AuthContext.Provider>
   );

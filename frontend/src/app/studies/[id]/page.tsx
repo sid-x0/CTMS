@@ -31,77 +31,77 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 
-/* ─── Design tokens ──────────────────────────────────────────────────────── */
+/* ─── Light Clinical Design Tokens ────────────────────────────────────────── */
 
 const RISK_META: Record<string, {
   scoreColor: string; badgeBg: string; badgeBorder: string; badgeText: string;
   headerBorder: string; headerBg: string; barColor: string;
 }> = {
   CRITICAL: {
-    scoreColor: "text-rose-400",
-    badgeBg: "bg-rose-500/15", badgeBorder: "border-rose-500/40", badgeText: "text-rose-300",
-    headerBorder: "border-rose-700/50", headerBg: "bg-rose-950/10",
-    barColor: "bg-rose-500",
+    scoreColor: "text-red-700",
+    badgeBg: "bg-red-50", badgeBorder: "border-red-200", badgeText: "text-red-700",
+    headerBorder: "border-red-200", headerBg: "bg-red-50/50",
+    barColor: "bg-red-600",
   },
   HIGH: {
-    scoreColor: "text-amber-400",
-    badgeBg: "bg-amber-500/15", badgeBorder: "border-amber-500/40", badgeText: "text-amber-300",
-    headerBorder: "border-amber-700/40", headerBg: "bg-amber-950/10",
-    barColor: "bg-amber-400",
+    scoreColor: "text-amber-700",
+    badgeBg: "bg-amber-50", badgeBorder: "border-amber-200", badgeText: "text-amber-700",
+    headerBorder: "border-amber-200", headerBg: "bg-amber-50/50",
+    barColor: "bg-amber-500",
   },
   MEDIUM: {
-    scoreColor: "text-sky-400",
-    badgeBg: "bg-sky-500/15", badgeBorder: "border-sky-500/40", badgeText: "text-sky-300",
-    headerBorder: "border-sky-700/40", headerBg: "bg-sky-950/10",
-    barColor: "bg-sky-400",
+    scoreColor: "text-blue-700",
+    badgeBg: "bg-blue-50", badgeBorder: "border-blue-200", badgeText: "text-blue-700",
+    headerBorder: "border-blue-200", headerBg: "bg-blue-50/50",
+    barColor: "bg-blue-500",
   },
   LOW: {
-    scoreColor: "text-emerald-400",
-    badgeBg: "bg-emerald-500/15", badgeBorder: "border-emerald-500/40", badgeText: "text-emerald-300",
-    headerBorder: "border-emerald-700/40", headerBg: "bg-emerald-950/10",
-    barColor: "bg-emerald-500",
+    scoreColor: "text-green-700",
+    badgeBg: "bg-green-50", badgeBorder: "border-green-200", badgeText: "text-green-700",
+    headerBorder: "border-green-200", headerBg: "bg-green-50/50",
+    barColor: "bg-green-600",
   },
 };
 
 const MILESTONE_STATUS_META: Record<string, { icon: React.ReactNode; border: string; bg: string; badge: string }> = {
   Completed: {
-    icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />,
-    border: "border-l-emerald-500",
-    bg: "bg-slate-950/80",
-    badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25",
+    icon: <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />,
+    border: "border-l-green-600",
+    bg: "bg-white",
+    badge: "bg-green-50 text-green-700 border-green-200",
   },
   Overdue: {
-    icon: <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />,
-    border: "border-l-rose-500",
-    bg: "bg-rose-950/15",
-    badge: "bg-rose-500/10 text-rose-400 border-rose-500/25",
+    icon: <AlertTriangle className="w-3.5 h-3.5 text-red-600" />,
+    border: "border-l-red-600",
+    bg: "bg-red-50/30",
+    badge: "bg-red-50 text-red-700 border-red-200",
   },
   Pending: {
-    icon: <Clock className="w-3.5 h-3.5 text-amber-400" />,
+    icon: <Clock className="w-3.5 h-3.5 text-amber-600" />,
     border: "border-l-amber-500",
-    bg: "bg-slate-900/80",
-    badge: "bg-amber-500/10 text-amber-400 border-amber-500/25",
+    bg: "bg-white",
+    badge: "bg-amber-50 text-amber-700 border-amber-200",
   },
   "In Progress": {
-    icon: <Activity className="w-3.5 h-3.5 text-sky-400" />,
-    border: "border-l-sky-500",
-    bg: "bg-sky-950/10",
-    badge: "bg-sky-500/10 text-sky-400 border-sky-500/25",
+    icon: <Activity className="w-3.5 h-3.5 text-blue-600" />,
+    border: "border-l-blue-600",
+    bg: "bg-blue-50/20",
+    badge: "bg-blue-50 text-blue-700 border-blue-200",
   },
 };
 
-/* ─── Small re-usable pieces ─────────────────────────────────────────────── */
+/* ─── Small Re-usable Components ─────────────────────────────────────────── */
 
 function SectionHeader({ icon, title, sub, right }: {
   icon: React.ReactNode; title: string; sub?: string; right?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3 mb-4">
+    <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-3 mb-4">
       <div className="flex items-center gap-2">
         {icon}
         <div>
-          <h2 className="text-sm font-bold text-slate-100">{title}</h2>
-          {sub && <p className="text-[10px] text-slate-500 mt-0.5">{sub}</p>}
+          <h2 className="text-sm font-bold text-slate-900">{title}</h2>
+          {sub && <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>}
         </div>
       </div>
       {right && <div className="shrink-0">{right}</div>}
@@ -117,18 +117,18 @@ function RiskDimBar({ label, score, max, color, desc }: {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-[11px]">
-        <span className="text-slate-400 font-semibold">{label}</span>
-        <span className="font-mono font-bold text-slate-200">
-          {score}<span className="text-slate-500 font-normal">/{max}</span>
+        <span className="text-slate-600 font-semibold">{label}</span>
+        <span className="font-mono font-bold text-slate-800">
+          {score}<span className="text-slate-400 font-normal">/{max}</span>
         </span>
       </div>
-      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
         <div
-          className={`h-full rounded-full transition-all duration-700 ${isEmpty ? "bg-emerald-600/30" : color}`}
+          className={`h-full rounded-full transition-all duration-700 ${isEmpty ? "bg-green-300" : color}`}
           style={{ width: isEmpty ? "4%" : `${pct}%` }}
         />
       </div>
-      {desc && <p className="text-[10px] text-slate-600">{desc}</p>}
+      {desc && <p className="text-[10px] text-slate-500">{desc}</p>}
     </div>
   );
 }
@@ -137,66 +137,53 @@ function EvidenceChip({ label, value, onClick, severity = "neutral" }: {
   label: string; value: string | number; onClick?: () => void; severity?: "critical" | "warning" | "good" | "neutral";
 }) {
   const colorMap = {
-    critical: "border-rose-700/40 bg-rose-950/20 text-rose-300",
-    warning:  "border-amber-700/30 bg-amber-950/15 text-amber-300",
-    good:     "border-emerald-700/30 bg-emerald-950/15 text-emerald-300",
-    neutral:  "border-slate-700/50 bg-slate-900 text-slate-300",
+    critical: "border-red-200 bg-red-50/70 text-red-800",
+    warning:  "border-amber-200 bg-amber-50/70 text-amber-800",
+    good:     "border-green-200 bg-green-50/70 text-green-800",
+    neutral:  "border-slate-200 bg-slate-50 text-slate-700",
   };
-  const base = `px-3 py-2 rounded-lg border text-xs ${colorMap[severity]}`;
+  const base = `px-3 py-2 rounded-md border text-xs ${colorMap[severity]} transition-colors`;
   if (onClick) {
     return (
-      <button onClick={onClick} className={`${base} hover:brightness-125 transition-all text-left`}>
-        <div className="text-[9px] font-bold uppercase tracking-wider opacity-70 mb-0.5">{label}</div>
-        <div className="font-bold">{value}</div>
+      <button onClick={onClick} className={`${base} hover:border-slate-400 hover:shadow-xs text-left w-full`}>
+        <div className="text-[10px] font-bold uppercase tracking-wider opacity-75 mb-0.5">{label}</div>
+        <div className="font-bold truncate">{value}</div>
       </button>
     );
   }
   return (
     <div className={base}>
-      <div className="text-[9px] font-bold uppercase tracking-wider opacity-70 mb-0.5">{label}</div>
-      <div className="font-bold">{value}</div>
+      <div className="text-[10px] font-bold uppercase tracking-wider opacity-75 mb-0.5">{label}</div>
+      <div className="font-bold truncate">{value}</div>
     </div>
   );
 }
 
-function EnrollmentBar({ current, target, pct }: { current: number; target: number; pct: number }) {
-  const color = pct >= 70 ? "bg-emerald-500" : pct >= 45 ? "bg-teal-400" : pct >= 25 ? "bg-amber-400" : "bg-rose-500";
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-[10px] font-mono">
-        <span className="text-slate-200 font-bold">{current}/{target}</span>
-        <span className="text-slate-500">{pct}%</span>
-      </div>
-      <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main page component ────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN STUDY DETAIL WORKSPACE
+═══════════════════════════════════════════════════════════════════════════ */
 
 export default function StudyDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const { loadData: refreshPortfolio } = useApp();
+  const { loadData } = useApp();
 
-  const studyId = Number(params.id);
+  const studyId = Number(params?.id);
   const today = new Date().toISOString().split("T")[0];
+
+  const [data, setData] = useState<any | null>(null);
+  const [preflight, setPreflight] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [resolving, setResolving] = useState<number | null>(null);
+  const [resolveOk, setResolveOk] = useState<Set<number>>(new Set());
 
   const canResolve =
     user?.user_role === "Administrator" ||
     user?.user_role === "Principal Investigator" ||
     user?.user_role === "Study Coordinator" ||
     user?.user_role === "Ethics Committee Member";
-
-  const [data, setData]               = useState<any | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState("");
-  const [resolving, setResolving]     = useState<number | null>(null);
-  const [resolveOk, setResolveOk]     = useState<Set<number>>(new Set());
-  const [preflightData, setPreflight] = useState<any | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -228,7 +215,7 @@ export default function StudyDetailPage() {
       setPreflight(updatedPf);
       setResolveOk(prev => new Set(prev).add(milestoneId));
       await load();
-      refreshPortfolio();
+      loadData();
     } catch (e) {
       console.error("Failed to resolve milestone", e);
     } finally {
@@ -238,19 +225,19 @@ export default function StudyDetailPage() {
 
   /* ── loading / error ── */
   if (loading) return (
-    <div className="min-h-[360px] flex flex-col items-center justify-center gap-3 ctms-card rounded-xl p-12 text-center">
-      <RefreshCw className="w-6 h-6 text-teal-400 animate-spin" />
-      <p className="font-semibold text-slate-200 text-sm">Loading Study Intelligence…</p>
-      <span className="text-xs text-slate-500 font-mono">Fetching risk scores, milestones, sites and pharmacovigilance data</span>
+    <div className="min-h-[360px] flex flex-col items-center justify-center gap-3 bg-white border border-slate-200 rounded-lg p-12 text-center shadow-sm">
+      <RefreshCw className="w-6 h-6 text-[#1e3a5f] animate-spin" />
+      <p className="font-semibold text-slate-800 text-sm">Loading Study Intelligence Workspace…</p>
+      <span className="text-xs text-slate-500 font-mono">Fetching risk scores, regulatory milestones, sites, and safety data</span>
     </div>
   );
 
   if (error || !data) return (
-    <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 ctms-card rounded-xl p-12 text-center">
-      <XCircle className="w-7 h-7 text-rose-400" />
-      <p className="text-sm font-semibold text-rose-300">{error || "Study not found"}</p>
-      <button onClick={() => router.push("/studies")} className="text-teal-400 text-xs flex items-center gap-1 hover:text-teal-300 transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to Portfolio
+    <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 bg-white border border-slate-200 rounded-lg p-12 text-center shadow-sm">
+      <XCircle className="w-7 h-7 text-red-600" />
+      <p className="text-sm font-semibold text-red-700">{error || "Study not found"}</p>
+      <button onClick={() => router.push("/studies")} className="ctms-btn-primary text-xs flex items-center gap-1">
+        <ArrowLeft className="w-3.5 h-3.5" /> Back to Clinical Studies
       </button>
     </div>
   );
@@ -260,13 +247,11 @@ export default function StudyDetailPage() {
 
   /* Derived */
   const preflightMilestoneMap: Record<number, any> = {};
-  if (preflightData?.checklist) {
-    preflightData.checklist.forEach((item: any) => {
+  if (preflight?.checklist) {
+    preflight.checklist.forEach((item: any) => {
       if (item.milestone_id) preflightMilestoneMap[item.milestone_id] = item;
     });
   }
-
-  const openSAEs = alerts.filter((a: any) => a.alert_type === "SAE_DEADLINE" || a.severity === "CRITICAL");
 
   const overdueMilestones = milestones.filter(
     (m: any) => m.is_overdue || (m.planned_date < today && m.status !== "Completed")
@@ -288,19 +273,19 @@ export default function StudyDetailPage() {
 
   const dimensions = [
     { label: "Accrual Velocity",    score: risk.recruitment_score, max: 30, color: "bg-amber-500" },
-    { label: "IEC / Compliance",    score: risk.compliance_score,  max: 25, color: "bg-cyan-500" },
-    { label: "Data Quality",        score: risk.data_quality_score, max: 20, color: "bg-blue-500" },
-    { label: "Protocol Deviations", score: risk.deviation_score,    max: 15, color: "bg-purple-500" },
-    { label: "Safety / SAE",        score: risk.safety_score,       max: 15, color: "bg-rose-500" },
+    { label: "IEC / Compliance",    score: risk.compliance_score,  max: 25, color: "bg-[#0f7b6c]" },
+    { label: "Data Quality",        score: risk.data_quality_score, max: 20, color: "bg-blue-600" },
+    { label: "Protocol Deviations", score: risk.deviation_score,    max: 15, color: "bg-purple-600" },
+    { label: "Safety / SAE",        score: risk.safety_score,       max: 15, color: "bg-red-600" },
   ];
 
   const funnelSteps = [
-    { label: "Screened",   count: kpis.screened_count,   color: "bg-slate-500" },
-    { label: "Eligible",   count: kpis.eligible_count,   color: "bg-sky-500" },
-    { label: "Enrolled",   count: kpis.enrolled_count,   color: "bg-teal-500" },
-    { label: "Randomized", count: kpis.randomized_count, color: "bg-cyan-500" },
-    { label: "Completed",  count: kpis.completed_count,  color: "bg-emerald-500" },
-    { label: "Withdrawn",  count: kpis.withdrawn_count,  color: "bg-rose-500" },
+    { label: "Screened",   count: kpis.screened_count,   color: "bg-slate-400" },
+    { label: "Eligible",   count: kpis.eligible_count,   color: "bg-blue-400" },
+    { label: "Enrolled",   count: kpis.enrolled_count,   color: "bg-[#0f7b6c]" },
+    { label: "Randomized", count: kpis.randomized_count, color: "bg-teal-500" },
+    { label: "Completed",  count: kpis.completed_count,  color: "bg-green-600" },
+    { label: "Withdrawn",  count: kpis.withdrawn_count,  color: "bg-red-500" },
   ];
   const maxFunnel = Math.max(...funnelSteps.map(s => s.count), 1);
 
@@ -308,7 +293,7 @@ export default function StudyDetailPage() {
   const navTo = (path: string) => router.push(path);
 
   return (
-    <div className="space-y-4 pb-10">
+    <div className="space-y-4 pb-10 max-w-7xl">
 
       {/* ══════════════════════════════════════════════════════════════
           BREADCRUMB + BACK
@@ -316,23 +301,23 @@ export default function StudyDetailPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.push("/studies")}
-          className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-teal-300 hover:border-teal-500/40 transition-all"
-          aria-label="Back to portfolio"
+          className="p-1.5 rounded bg-white border border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-xs"
+          aria-label="Back to clinical studies"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <span className="hover:text-teal-400 cursor-pointer transition-colors" onClick={() => router.push("/studies")}>
-            Portfolio
+          <span className="hover:text-[#1e3a5f] cursor-pointer transition-colors font-medium" onClick={() => router.push("/studies")}>
+            Clinical Studies
           </span>
-          <ChevronRight className="w-3 h-3" />
-          <span className="font-mono text-teal-400 font-bold">{study.protocol_number}</span>
-          <ChevronRight className="w-3 h-3" />
-          <span className="text-slate-400">Intelligence Workspace</span>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+          <span className="font-mono text-[#1e3a5f] font-bold">{study.protocol_number}</span>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-slate-600 font-medium">Study Workspace</span>
         </div>
         <button
           onClick={load}
-          className="ml-auto p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+          className="ml-auto p-1.5 rounded bg-white border border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-xs"
           title="Refresh"
           aria-label="Refresh study data"
         >
@@ -343,25 +328,25 @@ export default function StudyDetailPage() {
       {/* ══════════════════════════════════════════════════════════════
           1. STUDY HEADER
       ══════════════════════════════════════════════════════════════ */}
-      <div className={`ctms-card rounded-xl border ${riskMeta.headerBorder} ${riskMeta.headerBg} px-6 py-5`}>
+      <div className={`bg-white rounded-lg border ${riskMeta.headerBorder} ${riskMeta.headerBg} p-5 shadow-xs`}>
         <div className="flex flex-col lg:flex-row gap-4 justify-between">
           {/* Left: identity */}
           <div className="space-y-2 flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs font-black text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded border border-teal-500/30">
+              <span className="font-mono text-xs font-bold text-[#1e3a5f] bg-blue-50 px-2.5 py-1 rounded border border-blue-200">
                 {study.protocol_number}
               </span>
               <StatusBadge status={study.status} />
-              <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-800 text-slate-300 border border-slate-700 uppercase tracking-wider">
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-700 border border-slate-200 uppercase tracking-wider">
                 {study.phase} · {study.study_type}
               </span>
-              {preflightData && (
+              {preflight && (
                 <span className={`px-2 py-0.5 text-[10px] font-bold rounded border uppercase tracking-wider flex items-center gap-1 ${
-                  preflightData.ready_for_activation
-                    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
-                    : "bg-rose-500/10 text-rose-300 border-rose-500/30"
+                  preflight.ready_for_activation
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-red-50 text-red-700 border-red-200"
                 }`}>
-                  {preflightData.ready_for_activation
+                  {preflight.ready_for_activation
                     ? <><CheckCircle2 className="w-3 h-3" /> Activation Ready</>
                     : <><AlertTriangle className="w-3 h-3" /> Activation Blocked</>
                   }
@@ -369,43 +354,43 @@ export default function StudyDetailPage() {
               )}
             </div>
 
-            <h1 className="text-lg font-black text-slate-100 leading-tight">{study.title}</h1>
+            <h1 className="text-base font-bold text-slate-900 leading-snug">{study.title}</h1>
 
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
               <span className="flex items-center gap-1.5">
-                <FlaskConical className="w-3.5 h-3.5 text-teal-400" />
-                PI: <strong className="text-slate-300 ml-0.5">{study.principal_investigator}</strong>
+                <FlaskConical className="w-3.5 h-3.5 text-[#1e3a5f]" />
+                PI: <strong className="text-slate-800 ml-0.5">{study.principal_investigator}</strong>
               </span>
               <span className="flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                <Building2 className="w-3.5 h-3.5 text-slate-400" />
                 {study.sponsor}
               </span>
               <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
                 {study.start_date || "—"} — {study.expected_end_date || "—"}
               </span>
               <span className="flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                <Building2 className="w-3.5 h-3.5 text-slate-400" />
                 {kpis.active_sites}/{kpis.total_sites} sites active
               </span>
             </div>
 
             {study.intervention_type && (
-              <p className="text-[11px] text-slate-500">
-                Intervention: <span className="text-slate-300 font-medium">{study.intervention_type}</span>
+              <p className="text-[11px] text-slate-600">
+                Intervention: <span className="text-slate-800 font-semibold">{study.intervention_type}</span>
               </p>
             )}
           </div>
 
-          {/* Right: risk score — visually prominent */}
-          <div className="flex-shrink-0 flex flex-col items-end justify-center gap-1">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Risk Score</div>
-            <div className={`text-5xl font-black font-mono leading-none ${riskMeta.scoreColor}`}>
+          {/* Right: risk score */}
+          <div className="flex-shrink-0 flex flex-col items-end justify-center gap-1 border-t lg:border-t-0 lg:border-l border-slate-200 lg:pl-5 pt-3 lg:pt-0">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Risk Score</div>
+            <div className={`text-4xl font-black font-mono leading-none ${riskMeta.scoreColor}`}>
               {risk.score}
             </div>
-            <div className="text-[10px] font-bold text-slate-500 font-mono">/ 100</div>
-            <span className={`mt-1 px-3 py-1 rounded text-xs font-black uppercase tracking-wider border ${riskMeta.badgeBg} ${riskMeta.badgeBorder} ${riskMeta.badgeText}`}>
-              {risk.risk_level}
+            <div className="text-[10px] font-semibold text-slate-400 font-mono">/ 100 max</div>
+            <span className={`mt-1 px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider border ${riskMeta.badgeBg} ${riskMeta.badgeBorder} ${riskMeta.badgeText}`}>
+              {risk.risk_level} RISK
             </span>
           </div>
         </div>
@@ -419,22 +404,22 @@ export default function StudyDetailPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
         {/* Left 2 cols: Risk breakdown */}
-        <div className="xl:col-span-2 ctms-card rounded-xl p-5 space-y-5">
+        <div className="xl:col-span-2 bg-white border border-slate-200 rounded-lg p-5 space-y-5 shadow-xs">
           <SectionHeader
-            icon={<Shield className="w-4 h-4 text-teal-400" />}
+            icon={<Shield className="w-4 h-4 text-[#1e3a5f]" />}
             title="Why is this study at risk?"
             sub="Multi-factor composite score: Accrual (30%) · Regulatory (25%) · Data (20%) · Deviations (15%) · Safety (15%)"
           />
 
           {/* Primary driver callout */}
-          <div className={`p-3.5 rounded-lg border ${riskMeta.headerBorder} ${riskMeta.headerBg} flex items-start gap-3`}>
+          <div className={`p-3.5 rounded-md border ${riskMeta.headerBorder} ${riskMeta.headerBg} flex items-start gap-3`}>
             <Info className={`w-4 h-4 shrink-0 mt-0.5 ${riskMeta.scoreColor}`} />
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">Primary Driver</div>
-              <p className="text-sm font-bold text-slate-100 leading-snug">{risk.primary_driver}</p>
-              <div className="flex items-center gap-4 font-mono text-[10px] text-slate-500 mt-1.5">
-                <span>Current pace: <strong className="text-slate-300">{risk.current_recruitment_pace}/wk</strong></span>
-                <span>Expected: <strong className="text-slate-300">{risk.expected_recruitment_pace}/wk</strong></span>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">Primary Risk Driver</div>
+              <p className="text-xs font-bold text-slate-900 leading-snug">{risk.primary_driver}</p>
+              <div className="flex items-center gap-4 font-mono text-[11px] text-slate-600 mt-1.5">
+                <span>Current pace: <strong className="text-slate-800">{risk.current_recruitment_pace}/wk</strong></span>
+                <span>Expected: <strong className="text-slate-800">{risk.expected_recruitment_pace}/wk</strong></span>
               </div>
             </div>
           </div>
@@ -448,7 +433,7 @@ export default function StudyDetailPage() {
 
           {/* Evidence grid */}
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Evidence behind the risk</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Evidence Behind Risk Factors</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <EvidenceChip
                 label="Enrollment"
@@ -485,28 +470,27 @@ export default function StudyDetailPage() {
                 onClick={() => navTo("/sites")}
               />
             </div>
-            <p className="text-[9px] text-slate-600 italic mt-2">
-              Click evidence items to navigate to the relevant module. All values derived from database state.
+            <p className="text-[10px] text-slate-400 italic mt-2">
+              Click evidence metrics to open module workflows. Derived strictly from current synthetic trial database.
             </p>
           </div>
         </div>
 
         {/* Right 1 col: Recommended Actions */}
-        <div className="ctms-card rounded-xl p-5 space-y-4 flex flex-col">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4 flex flex-col shadow-xs">
           <SectionHeader
-            icon={<Lightbulb className="w-4 h-4 text-amber-400" />}
-            title="What should happen next?"
-            sub="Role-mapped actions from risk engine"
+            icon={<Lightbulb className="w-4 h-4 text-amber-600" />}
+            title="Recommended Actions"
+            sub="Engine recommendations mapped by clinical role"
           />
 
           {risk.recommended_actions?.length > 0 ? (
-            <div className="space-y-3 flex-1">
+            <div className="space-y-2.5 flex-1">
               {risk.recommended_actions.map((action: string, idx: number) => {
                 const roleMatch = action.match(/^\[([^\]]+)\]/);
                 const roleLabel = roleMatch ? roleMatch[1] : null;
                 const text = roleMatch ? action.slice(roleMatch[0].length + 1) : action;
 
-                // Map role → destination
                 const dest =
                   roleLabel?.includes("Pharmacovigilance") ? "/safety" :
                   roleLabel?.includes("Study Coordinator")  ? "/participants" :
@@ -515,20 +499,20 @@ export default function StudyDetailPage() {
                   null;
 
                 return (
-                  <div key={idx} className="p-3.5 rounded-lg bg-amber-950/15 border border-amber-700/30 space-y-2">
+                  <div key={idx} className="p-3 rounded-md bg-slate-50 border border-slate-200 space-y-1.5">
                     {roleLabel && (
-                      <div className="text-[9px] font-black uppercase tracking-wider text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-block">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-[#1e3a5f] bg-blue-50 px-2 py-0.5 rounded border border-blue-200 inline-block">
                         {roleLabel}
                       </div>
                     )}
-                    <p className="text-[11px] text-slate-300 leading-snug">{text}</p>
+                    <p className="text-xs text-slate-700 leading-snug">{text}</p>
                     {dest && (
                       <button
                         onClick={() => navTo(dest)}
-                        className="text-[10px] font-bold text-teal-300 hover:text-teal-200 flex items-center gap-1 transition-colors"
+                        className="text-[11px] font-semibold text-[#1e3a5f] hover:underline flex items-center gap-1 transition-colors mt-1"
                         aria-label={`Navigate to ${dest}`}
                       >
-                        Go to module <ArrowRight className="w-3 h-3" />
+                        Open workspace module <ArrowRight className="w-3 h-3" />
                       </button>
                     )}
                   </div>
@@ -537,28 +521,28 @@ export default function StudyDetailPage() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8 text-center">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-              <p className="text-xs text-slate-500">No specific actions required. Study is on track.</p>
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              <p className="text-xs text-slate-500">No priority interventions needed. Study accrual is on schedule.</p>
             </div>
           )}
 
           {/* Quick navigation */}
-          <div className="border-t border-slate-800 pt-3 space-y-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">Quick Navigation</div>
+          <div className="border-t border-slate-200 pt-3 space-y-1.5">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Module Workspaces</div>
             {[
-              { icon: ShieldAlert, label: "Safety Center", path: "/safety" },
-              { icon: CheckCircle2, label: "Compliance",   path: "/compliance" },
-              { icon: Users,        label: "Participants", path: "/participants" },
-              { icon: Eye,          label: "Audit Trail",  path: "/audit" },
+              { icon: ShieldAlert, label: "Safety Workspace", path: "/safety" },
+              { icon: CheckCircle2, label: "Compliance & Pre-flight", path: "/compliance" },
+              { icon: Users, label: "Participant Registry", path: "/participants" },
+              { icon: Eye, label: "Audit Verification", path: "/audit" },
             ].map(({ icon: Icon, label, path }) => (
               <button
                 key={path}
                 onClick={() => navTo(path)}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 text-[11px] font-medium transition-all"
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors"
                 aria-label={`Navigate to ${label}`}
               >
-                <Icon className="w-3.5 h-3.5 text-teal-400" />
-                {label}
+                <Icon className="w-3.5 h-3.5 text-[#1e3a5f]" />
+                <span>{label}</span>
               </button>
             ))}
           </div>
@@ -571,14 +555,14 @@ export default function StudyDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
         {/* Funnel (2 cols) */}
-        <div className="lg:col-span-2 ctms-card rounded-xl p-5">
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
           <SectionHeader
-            icon={<TrendingDown className="w-4 h-4 text-cyan-400" />}
+            icon={<TrendingDown className="w-4 h-4 text-[#1e3a5f]" />}
             title="Participant Flow"
-            sub="Enrollment pipeline"
+            sub="Protocol accrual and screening funnel"
             right={
-              <button onClick={() => navTo("/participants")} className="text-[10px] text-teal-400 hover:text-teal-300 font-bold flex items-center gap-0.5 transition-colors">
-                All Participants <ArrowRight className="w-3 h-3" />
+              <button onClick={() => navTo("/participants")} className="text-[11px] text-[#1e3a5f] hover:underline font-semibold flex items-center gap-0.5">
+                All Subjects <ArrowRight className="w-3 h-3" />
               </button>
             }
           />
@@ -587,80 +571,80 @@ export default function StudyDetailPage() {
             {funnelSteps.map((step) => (
               <div key={step.label} className="space-y-0.5">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400 font-semibold">{step.label}</span>
-                  <span className="font-mono font-bold text-slate-200">{step.count}</span>
+                  <span className="text-slate-600 font-medium">{step.label}</span>
+                  <span className="font-mono font-bold text-slate-800">{step.count}</span>
                 </div>
-                <div className="h-4 bg-slate-800 rounded overflow-hidden">
+                <div className="h-3.5 bg-slate-100 rounded overflow-hidden border border-slate-200">
                   <div
-                    className={`h-full rounded ${step.color} opacity-85 flex items-center justify-end pr-1.5 transition-all duration-700`}
+                    className={`h-full rounded ${step.color} flex items-center justify-end pr-1.5 transition-all duration-700`}
                     style={{ width: `${Math.max((step.count / maxFunnel) * 100, step.count > 0 ? 6 : 0)}%` }}
                   >
-                    {step.count > 0 && <span className="text-white text-[9px] font-black">{step.count}</span>}
+                    {step.count > 0 && <span className="text-white text-[9px] font-bold">{step.count}</span>}
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-800 space-y-1.5">
+          <div className="mt-4 pt-3 border-t border-slate-200 space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Overall Progress</span>
-              <span className="font-mono font-bold text-slate-200">{kpis.current_enrollment}/{kpis.target_enrollment}</span>
+              <span className="text-slate-600 font-medium">Overall Accrual</span>
+              <span className="font-mono font-bold text-slate-900">{kpis.current_enrollment} / {kpis.target_enrollment}</span>
             </div>
-            <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
               <div
                 className={`h-full rounded-full transition-all duration-700 ${
-                  kpis.recruitment_percentage >= 70 ? "bg-emerald-500" :
-                  kpis.recruitment_percentage >= 45 ? "bg-teal-400" : "bg-amber-400"
+                  kpis.recruitment_percentage >= 70 ? "bg-green-600" :
+                  kpis.recruitment_percentage >= 45 ? "bg-blue-600" : "bg-amber-500"
                 }`}
                 style={{ width: `${Math.min(100, kpis.recruitment_percentage)}%` }}
               />
             </div>
-            <p className="text-right text-[10px] font-mono text-teal-400 font-bold">{kpis.recruitment_percentage}% of target</p>
+            <p className="text-right text-[11px] font-mono text-[#1e3a5f] font-bold">{kpis.recruitment_percentage}% target reached</p>
           </div>
         </div>
 
         {/* Per-site performance (3 cols) */}
-        <div className="lg:col-span-3 ctms-card rounded-xl p-5">
+        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
           <SectionHeader
-            icon={<Building2 className="w-4 h-4 text-teal-400" />}
+            icon={<Building2 className="w-4 h-4 text-[#1e3a5f]" />}
             title="Site Performance"
-            sub={`${sites.length} site(s) — sorted by recruitment pace (worst first)`}
+            sub={`${sites.length} participating center(s) — sorted worst accrual first`}
           />
 
           <div className="space-y-3">
             {sortedSites.length === 0 ? (
-              <p className="text-xs text-slate-500 italic text-center py-4">No sites assigned to this study.</p>
+              <p className="text-xs text-slate-500 italic text-center py-4">No participating sites assigned.</p>
             ) : sortedSites.map((site: any) => (
-              <div key={site.id} className="space-y-1">
+              <div key={site.id} className="p-2.5 rounded border border-slate-100 bg-slate-50/50 space-y-1">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-200 truncate">{site.site_name}</p>
-                    <p className="text-[10px] text-slate-500">{site.location} · {site.investigator}</p>
+                    <p className="text-xs font-semibold text-slate-800 truncate">{site.site_name}</p>
+                    <p className="text-[10px] text-slate-500">{site.location} · PI: {site.investigator}</p>
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
-                      site.status === "Active"    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" :
-                      site.status === "Suspended" ? "bg-rose-500/10 text-rose-300 border-rose-500/30" :
-                      site.status === "Pending"   ? "bg-amber-500/10 text-amber-300 border-amber-500/30" :
-                                                    "bg-slate-800 text-slate-400 border-slate-700"
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
+                      site.status === "Active"    ? "bg-green-50 text-green-700 border-green-200" :
+                      site.status === "Suspended" ? "bg-red-50 text-red-700 border-red-200" :
+                      site.status === "Pending"   ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                                    "bg-slate-100 text-slate-700 border-slate-200"
                     }`}>{site.status}</span>
-                    <span className="font-mono text-[10px] font-bold text-slate-300">
+                    <span className="font-mono text-xs font-bold text-slate-800">
                       {site.current_enrollment}/{site.target_enrollment}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-700 ${
-                        site.recruitment_percentage >= 70 ? "bg-emerald-500" :
-                        site.recruitment_percentage >= 40 ? "bg-amber-400" : "bg-rose-500"
+                        site.recruitment_percentage >= 70 ? "bg-green-600" :
+                        site.recruitment_percentage >= 40 ? "bg-amber-500" : "bg-red-600"
                       }`}
                       style={{ width: `${Math.min(100, site.recruitment_percentage)}%` }}
                     />
                   </div>
-                  <span className="text-[10px] font-mono text-slate-500 w-8 text-right">{site.recruitment_percentage}%</span>
+                  <span className="text-[11px] font-mono text-slate-600 w-10 text-right">{site.recruitment_percentage}%</span>
                 </div>
               </div>
             ))}
@@ -671,16 +655,16 @@ export default function StudyDetailPage() {
       {/* ══════════════════════════════════════════════════════════════
           6. MILESTONES / TIMELINE
       ══════════════════════════════════════════════════════════════ */}
-      <div className="ctms-card rounded-xl p-5">
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
         <SectionHeader
-          icon={<Activity className="w-4 h-4 text-teal-400" />}
+          icon={<Activity className="w-4 h-4 text-[#1e3a5f]" />}
           title="Regulatory Milestone Timeline"
-          sub="Ordered: overdue → upcoming → completed"
+          sub="Ordered by clinical priority: Overdue → Upcoming → Completed"
           right={
-            <div className="flex items-center gap-3 text-[10px] font-mono font-bold">
-              <span className="text-rose-400">✗ {overdueMilestones.length} overdue</span>
-              <span className="text-amber-400">◷ {upcomingMilestones.length} upcoming</span>
-              <span className="text-emerald-400">✓ {completedMilestones.length} done</span>
+            <div className="flex items-center gap-3 text-[11px] font-mono font-semibold">
+              <span className="text-red-700">{overdueMilestones.length} overdue</span>
+              <span className="text-amber-700">{upcomingMilestones.length} pending</span>
+              <span className="text-green-700">{completedMilestones.length} completed</span>
             </div>
           }
         />
@@ -704,26 +688,26 @@ export default function StudyDetailPage() {
               return (
                 <div
                   key={m.id}
-                  className={`px-4 py-3 rounded-lg border-l-4 border flex items-start justify-between gap-4 transition-all ${statusMeta.border} ${statusMeta.bg} border-slate-800/60`}
+                  className={`px-4 py-3 rounded border-l-4 border flex items-start justify-between gap-4 transition-colors ${statusMeta.border} ${statusMeta.bg} border-slate-200`}
                 >
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="mt-0.5 shrink-0">{statusMeta.icon}</div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                        <span className="font-bold text-slate-100 text-xs leading-snug">{m.name}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border ${statusMeta.badge}`}>
+                        <span className="font-bold text-slate-900 text-xs leading-snug">{m.name}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border ${statusMeta.badge}`}>
                           {mStatus}
                         </span>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-800 text-slate-500 border border-slate-700">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                           {m.milestone_type}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] text-slate-500">
-                        <span>Planned: <strong className="text-slate-400">{m.planned_date}</strong></span>
-                        {m.actual_date && <span>Completed: <strong className="text-emerald-400">{m.actual_date}</strong></span>}
-                        {isOverdue && <span className="text-rose-400 font-bold">{daysOverdue} day(s) overdue</span>}
+                        <span>Planned: <strong className="text-slate-700">{m.planned_date}</strong></span>
+                        {m.actual_date && <span>Completed: <strong className="text-green-700 font-bold">{m.actual_date}</strong></span>}
+                        {isOverdue && <span className="text-red-700 font-bold">{daysOverdue} day(s) overdue</span>}
                       </div>
-                      {m.notes && <p className="mt-1 text-[10px] text-slate-600 italic">{m.notes}</p>}
+                      {m.notes && <p className="mt-1 text-[11px] text-slate-500 italic">{m.notes}</p>}
                     </div>
                   </div>
 
@@ -731,18 +715,18 @@ export default function StudyDetailPage() {
                   {canMarkComplete && (
                     <div className="shrink-0">
                       {resolveOk.has(m.id) ? (
-                        <span className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
+                        <span className="flex items-center gap-1 text-green-700 text-xs font-bold">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Resolved
                         </span>
                       ) : (
                         <button
                           onClick={() => handleResolveMilestone(m.id)}
                           disabled={resolving === m.id}
-                          className="px-2.5 py-1.5 rounded-lg bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 text-[10px] font-bold border border-teal-500/30 transition-colors disabled:opacity-50 flex items-center gap-1"
+                          className="ctms-btn-primary text-[11px] py-1 px-2.5 disabled:opacity-50 flex items-center gap-1"
                           aria-label={`Mark milestone ${m.name} as complete`}
                         >
                           <Wrench className="w-3 h-3" />
-                          {resolving === m.id ? "Resolving…" : "Mark Complete"}
+                          {resolving === m.id ? "Resolving…" : "Complete"}
                         </button>
                       )}
                     </div>
@@ -760,12 +744,12 @@ export default function StudyDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Safety Snapshot */}
-        <div className="ctms-card rounded-xl p-5">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
           <SectionHeader
-            icon={<ShieldAlert className="w-4 h-4 text-rose-400" />}
-            title="Safety Snapshot"
+            icon={<ShieldAlert className="w-4 h-4 text-red-600" />}
+            title="Pharmacovigilance & Safety"
             right={
-              <button onClick={() => navTo("/safety")} className="px-2.5 py-1 rounded-lg bg-rose-950/30 border border-rose-700/35 text-rose-300 text-[10px] font-bold hover:bg-rose-950/50 transition-colors flex items-center gap-1" aria-label="Open Safety Center">
+              <button onClick={() => navTo("/safety")} className="text-[11px] font-semibold text-[#1e3a5f] hover:underline flex items-center gap-1" aria-label="Open Safety Center">
                 Open Safety <ArrowRight className="w-3 h-3" />
               </button>
             }
@@ -773,81 +757,81 @@ export default function StudyDetailPage() {
 
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
-                <div className={`text-2xl font-black font-mono ${risk.safety_score > 0 ? "text-rose-300" : "text-emerald-400"}`}>
+              <div className="p-3 rounded border border-slate-200 bg-slate-50">
+                <div className={`text-2xl font-bold font-mono ${risk.safety_score > 0 ? "text-red-700" : "text-green-700"}`}>
                   {risk.safety_score > 0 ? Math.ceil(risk.safety_score / 8) : 0}
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">SAEs under review</div>
+                <div className="text-[10px] font-semibold uppercase text-slate-500 mt-0.5">SAEs Under Review</div>
               </div>
-              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
-                <div className={`text-2xl font-black font-mono ${alerts.length > 0 ? "text-amber-300" : "text-slate-400"}`}>
+              <div className="p-3 rounded border border-slate-200 bg-slate-50">
+                <div className={`text-2xl font-bold font-mono ${alerts.length > 0 ? "text-amber-700" : "text-slate-700"}`}>
                   {alerts.length}
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Active alerts</div>
+                <div className="text-[10px] font-semibold uppercase text-slate-500 mt-0.5">Active Safety Alerts</div>
               </div>
             </div>
 
             {alerts.length > 0 ? (
               <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Potential Safety Signals</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Active Signals & Alerts</p>
                 {alerts.slice(0, 3).map((alert: any) => (
-                  <div key={alert.id} className={`p-2.5 rounded-lg border text-[11px] ${
-                    alert.severity === "CRITICAL" ? "bg-rose-950/20 border-rose-700/40" :
-                    alert.severity === "HIGH"     ? "bg-amber-950/15 border-amber-700/30" :
-                                                    "bg-slate-900 border-slate-800"
+                  <div key={alert.id} className={`p-2.5 rounded border text-xs ${
+                    alert.severity === "CRITICAL" ? "bg-red-50/70 border-red-200" :
+                    alert.severity === "HIGH"     ? "bg-amber-50/70 border-amber-200" :
+                                                    "bg-slate-50 border-slate-200"
                   }`}>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-bold text-slate-100 truncate">{alert.title}</p>
-                      <span className={`shrink-0 text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${
-                        alert.severity === "CRITICAL" ? "bg-rose-500/15 text-rose-300 border-rose-500/30" :
-                        alert.severity === "HIGH"     ? "bg-amber-500/15 text-amber-300 border-amber-500/30" :
-                                                        "bg-slate-800 text-slate-500 border-slate-700"
+                      <p className="font-bold text-slate-900 truncate">{alert.title}</p>
+                      <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
+                        alert.severity === "CRITICAL" ? "bg-red-100 text-red-800 border-red-200" :
+                        alert.severity === "HIGH"     ? "bg-amber-100 text-amber-800 border-amber-200" :
+                                                        "bg-slate-100 text-slate-700 border-slate-200"
                       }`}>{alert.severity}</span>
                     </div>
-                    <p className="text-slate-400 text-[10px] mt-0.5 line-clamp-2">{alert.message}</p>
+                    <p className="text-slate-600 text-[11px] mt-0.5 line-clamp-2">{alert.message}</p>
                   </div>
                 ))}
-                <p className="text-[9px] text-slate-600 italic">Potential signals — not confirmed causality. Prototype state transition only; no external DCGI filing occurs.</p>
+                <p className="text-[10px] text-slate-400 italic">Pre-adjudicated pharmacovigilance surveillance signals.</p>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <p className="text-xs text-slate-500">No active safety alerts for this study.</p>
+                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                <p className="text-xs text-slate-500">No active pharmacovigilance signals for this protocol.</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Compliance Snapshot */}
-        <div className="ctms-card rounded-xl p-5">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
           <SectionHeader
-            icon={<CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-            title="Compliance Status"
+            icon={<CheckCircle2 className="w-4 h-4 text-green-600" />}
+            title="Regulatory Compliance Status"
             right={
-              <button onClick={() => navTo("/compliance")} className="px-2.5 py-1 rounded-lg bg-emerald-950/30 border border-emerald-700/35 text-emerald-300 text-[10px] font-bold hover:bg-emerald-950/50 transition-colors flex items-center gap-1" aria-label="Open Compliance">
+              <button onClick={() => navTo("/compliance")} className="text-[11px] font-semibold text-[#1e3a5f] hover:underline flex items-center gap-1" aria-label="Open Compliance">
                 Open Compliance <ArrowRight className="w-3 h-3" />
               </button>
             }
           />
 
           {/* Preflight status */}
-          {preflightData && (
-            <div className={`mb-4 p-3 rounded-lg border flex items-center gap-3 ${
-              preflightData.ready_for_activation
-                ? "bg-emerald-950/20 border-emerald-700/30"
-                : "bg-rose-950/15 border-rose-700/35"
+          {preflight && (
+            <div className={`mb-3 p-3 rounded border flex items-center gap-3 ${
+              preflight.ready_for_activation
+                ? "bg-green-50 border-green-200"
+                : "bg-red-50 border-red-200"
             }`}>
-              {preflightData.ready_for_activation
-                ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                : <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              {preflight.ready_for_activation
+                ? <CheckCircle2 className="w-4 h-4 text-green-700 shrink-0" />
+                : <AlertTriangle className="w-4 h-4 text-red-700 shrink-0" />
               }
               <div>
-                <div className={`text-xs font-bold ${preflightData.ready_for_activation ? "text-emerald-300" : "text-rose-300"}`}>
-                  Pre-flight: {preflightData.ready_for_activation ? "PASS — Activation Ready" : "ATTENTION REQUIRED — Activation Blocked"}
+                <div className={`text-xs font-bold ${preflight.ready_for_activation ? "text-green-800" : "text-red-800"}`}>
+                  Pre-flight: {preflight.ready_for_activation ? "PASS — Activation Ready" : "ATTENTION REQUIRED — Activation Blocked"}
                 </div>
-                {!preflightData.ready_for_activation && preflightData.checklist && (
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {preflightData.checklist.filter((c: any) => !c.passed).length} check(s) not passed
+                {!preflight.ready_for_activation && preflight.checklist && (
+                  <p className="text-[10px] text-slate-600 mt-0.5">
+                    {preflight.checklist.filter((c: any) => !c.passed).length} regulatory requirement(s) pending resolution
                   </p>
                 )}
               </div>
@@ -855,35 +839,37 @@ export default function StudyDetailPage() {
           )}
 
           <div className="space-y-2">
-            {preflightData?.checklist?.map((item: any) => (
-              <div key={item.check} className="flex items-center gap-2.5 text-xs">
+            {preflight?.checklist?.map((item: any) => (
+              <div key={item.key || item.check} className="flex items-center gap-2.5 text-xs">
                 {item.passed
-                  ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  : <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                  : <XCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
                 }
-                <span className={item.passed ? "text-slate-400" : "text-slate-200 font-semibold"}>{item.label}</span>
+                <span className={item.passed ? "text-slate-600" : "text-slate-900 font-semibold"}>
+                  {item.title || item.label}
+                </span>
                 {!item.passed && (
-                  <span className="ml-auto text-[9px] font-bold text-rose-400 uppercase px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">
+                  <span className="ml-auto text-[9px] font-bold text-red-700 uppercase px-1.5 py-0.5 rounded bg-red-50 border border-red-200">
                     Failed
                   </span>
                 )}
               </div>
             ))}
-            {!preflightData && (
+            {!preflight && (
               <p className="text-xs text-slate-500 italic text-center py-4">Preflight data unavailable.</p>
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 gap-2">
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-              <div className={`text-xl font-black font-mono ${kpis.overdue_milestones_count > 0 ? "text-amber-300" : "text-emerald-400"}`}>
+          <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-2">
+            <div className="p-2.5 rounded bg-slate-50 border border-slate-200 text-center">
+              <div className={`text-xl font-bold font-mono ${kpis.overdue_milestones_count > 0 ? "text-red-700" : "text-green-700"}`}>
                 {kpis.overdue_milestones_count}
               </div>
-              <div className="text-[9px] text-slate-500 mt-0.5 uppercase font-semibold">Overdue</div>
+              <div className="text-[9px] text-slate-500 mt-0.5 uppercase font-semibold">Overdue Milestones</div>
             </div>
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-              <div className="text-xl font-black font-mono text-slate-300">{kpis.upcoming_milestones_count}</div>
-              <div className="text-[9px] text-slate-500 mt-0.5 uppercase font-semibold">Upcoming</div>
+            <div className="p-2.5 rounded bg-slate-50 border border-slate-200 text-center">
+              <div className="text-xl font-bold font-mono text-slate-800">{kpis.upcoming_milestones_count}</div>
+              <div className="text-[9px] text-slate-500 mt-0.5 uppercase font-semibold">Upcoming Milestones</div>
             </div>
           </div>
         </div>
@@ -892,11 +878,11 @@ export default function StudyDetailPage() {
       {/* ══════════════════════════════════════════════════════════════
           9. DATA QUALITY / PROTOCOL
       ══════════════════════════════════════════════════════════════ */}
-      <div className="ctms-card rounded-xl p-5">
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
         <SectionHeader
-          icon={<Database className="w-4 h-4 text-blue-400" />}
+          icon={<Database className="w-4 h-4 text-[#1e3a5f]" />}
           title="Data Quality & Protocol Integrity"
-          sub="Operational indicators that contribute to the composite risk score"
+          sub="Operational indicators contributing to composite trial quality"
         />
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -905,37 +891,37 @@ export default function StudyDetailPage() {
               label: "Open Data Queries",
               value: study.open_data_queries_count ?? 0,
               sub: "Unresolved CRF queries",
-              color: (study.open_data_queries_count ?? 0) >= 5 ? "text-rose-300" : (study.open_data_queries_count ?? 0) >= 2 ? "text-amber-300" : "text-emerald-400",
+              color: (study.open_data_queries_count ?? 0) >= 5 ? "text-red-700" : (study.open_data_queries_count ?? 0) >= 2 ? "text-amber-700" : "text-green-700",
               riskNote: `+${risk.data_quality_score} pts risk contribution`,
             },
             {
               label: "Protocol Deviations",
               value: study.protocol_deviations_count ?? 0,
               sub: "Recorded deviations",
-              color: (study.protocol_deviations_count ?? 0) >= 3 ? "text-rose-300" : (study.protocol_deviations_count ?? 0) >= 1 ? "text-amber-300" : "text-emerald-400",
+              color: (study.protocol_deviations_count ?? 0) >= 3 ? "text-red-700" : (study.protocol_deviations_count ?? 0) >= 1 ? "text-amber-700" : "text-green-700",
               riskNote: `+${risk.deviation_score} pts risk contribution`,
             },
             {
               label: "Active Sites",
               value: kpis.active_sites,
               sub: `of ${kpis.total_sites} total sites`,
-              color: kpis.active_sites < kpis.total_sites ? "text-amber-300" : "text-emerald-400",
+              color: kpis.active_sites < kpis.total_sites ? "text-amber-700" : "text-green-700",
               riskNote: "",
             },
             {
               label: "Enrollment Pace",
               value: `${risk.current_recruitment_pace}/wk`,
               sub: `Expected: ${risk.expected_recruitment_pace}/wk`,
-              color: risk.recruitment_score >= 20 ? "text-rose-300" : risk.recruitment_score >= 10 ? "text-amber-300" : "text-emerald-400",
+              color: risk.recruitment_score >= 20 ? "text-red-700" : risk.recruitment_score >= 10 ? "text-amber-700" : "text-green-700",
               riskNote: `+${risk.recruitment_score} pts risk contribution`,
             },
           ].map((item) => (
-            <div key={item.label} className="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
-              <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">{item.label}</div>
-              <div className={`text-xl font-black font-mono ${item.color}`}>{item.value}</div>
+            <div key={item.label} className="p-3.5 rounded border border-slate-200 bg-slate-50/50 space-y-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{item.label}</div>
+              <div className={`text-xl font-bold font-mono ${item.color}`}>{item.value}</div>
               <div className="text-[10px] text-slate-500">{item.sub}</div>
               {item.riskNote && (
-                <div className="text-[9px] font-mono text-slate-600 border-t border-slate-800 pt-1 mt-1">{item.riskNote}</div>
+                <div className="text-[9px] font-mono text-slate-400 border-t border-slate-200 pt-1 mt-1">{item.riskNote}</div>
               )}
             </div>
           ))}
@@ -946,13 +932,13 @@ export default function StudyDetailPage() {
           10. RECENT ACTIVITY (compact audit excerpt)
       ══════════════════════════════════════════════════════════════ */}
       {alerts.length > 0 && (
-        <div className="ctms-card rounded-xl p-5">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
           <SectionHeader
-            icon={<FileText className="w-4 h-4 text-teal-400" />}
-            title="Recent Activity"
-            sub="Latest alerts and events for this study"
+            icon={<FileText className="w-4 h-4 text-[#1e3a5f]" />}
+            title="Recent Protocol Events"
+            sub="Latest alerts and notifications for this study"
             right={
-              <button onClick={() => navTo("/audit")} className="text-[10px] font-bold text-teal-400 hover:text-teal-300 flex items-center gap-0.5 transition-colors" aria-label="View full audit trail">
+              <button onClick={() => navTo("/audit")} className="text-[11px] font-semibold text-[#1e3a5f] hover:underline flex items-center gap-0.5" aria-label="View full audit trail">
                 View Audit Trail <ArrowRight className="w-3 h-3" />
               </button>
             }
@@ -960,19 +946,19 @@ export default function StudyDetailPage() {
 
           <div className="space-y-2">
             {alerts.slice(0, 5).map((alert: any) => (
-              <div key={alert.id} className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+              <div key={alert.id} className="flex items-start gap-3 px-3 py-2 rounded border border-slate-200 bg-slate-50 text-xs">
                 <AlertTriangle className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
-                  alert.severity === "CRITICAL" ? "text-rose-400" :
-                  alert.severity === "HIGH"     ? "text-amber-400" : "text-slate-500"
+                  alert.severity === "CRITICAL" ? "text-red-600" :
+                  alert.severity === "HIGH"     ? "text-amber-600" : "text-slate-400"
                 }`} />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-200 truncate">{alert.title}</p>
+                  <p className="font-semibold text-slate-800 truncate">{alert.title}</p>
                   <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{alert.message}</p>
                 </div>
-                <span className={`shrink-0 text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${
-                  alert.severity === "CRITICAL" ? "bg-rose-500/15 text-rose-300 border-rose-500/30" :
-                  alert.severity === "HIGH"     ? "bg-amber-500/15 text-amber-300 border-amber-500/30" :
-                                                  "bg-slate-800 text-slate-500 border-slate-700"
+                <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
+                  alert.severity === "CRITICAL" ? "bg-red-50 text-red-700 border-red-200" :
+                  alert.severity === "HIGH"     ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                                  "bg-slate-100 text-slate-600 border-slate-200"
                 }`}>{alert.severity}</span>
               </div>
             ))}
