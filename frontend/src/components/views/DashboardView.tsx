@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -23,7 +24,8 @@ import {
   RefreshCw,
   SlidersHorizontal,
   Info,
-  Layers
+  Layers,
+  Lightbulb
 } from "lucide-react";
 import {
   LineChart,
@@ -40,15 +42,63 @@ import {
 interface DashboardViewProps {
   data: any;
   onNavigateTab: (tab: string, studyId?: number) => void;
+  loading?: boolean;
+  onRetry?: () => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTab }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTab, loading, onRetry }) => {
   const { user } = useAuth();
+  const router = useRouter();
   const [triageFilter, setTriageFilter] = useState<"ALL" | "CRITICAL" | "ACCRUAL" | "MILESTONES">("ALL");
   const [tableSearch, setTableSearch] = useState("");
   const [tableRiskFilter, setTableRiskFilter] = useState<string>("ALL");
+  const [expandedActions, setExpandedActions] = useState<Set<number>>(new Set());
+
+  const toggleActions = (studyId: number) => {
+    setExpandedActions(prev => {
+      const next = new Set(prev);
+      next.has(studyId) ? next.delete(studyId) : next.add(studyId);
+      return next;
+    });
+  };
+
+  // Smart triage navigation: study-specific items go to /studies/[id], others go to their tab
+  const handleTriageAction = (item: any) => {
+    if (item.study_id && item.action_target === "safety") {
+      router.push(`/safety`);
+    } else if (item.study_id && item.action_target === "milestones") {
+      router.push(`/milestones`);
+    } else if (item.study_id && item.action_target === "sites") {
+      router.push(`/sites`);
+    } else if (item.study_id) {
+      router.push(`/studies/${item.study_id}`);
+    } else {
+      onNavigateTab(item.action_target);
+    }
+  };
 
   if (!data || !data.kpis) {
+    if (loading === false) {
+      return (
+        <div className="p-12 text-center text-slate-300 font-mono text-sm ctms-card flex flex-col items-center justify-center gap-4">
+          <AlertTriangle className="w-8 h-8 text-rose-500" />
+          <div>
+            <p className="font-semibold text-rose-400 text-base">Failed to load Intelligence Data</p>
+            <span className="text-xs text-slate-400">The connection to the CTMS backend could not be established.</span>
+          </div>
+          {onRetry && (
+            <button 
+              onClick={onRetry}
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2 mt-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Retry Connection
+            </button>
+          )}
+        </div>
+      );
+    }
+    
     return (
       <div className="p-12 text-center text-slate-300 font-mono text-sm ctms-card flex flex-col items-center justify-center gap-3">
         <RefreshCw className="w-6 h-6 text-teal-400 animate-spin" />
@@ -385,7 +435,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
                     Target Role: <strong className="text-slate-200">{item.responsible_role}</strong>
                   </div>
                   <button
-                    onClick={() => onNavigateTab(item.action_target, item.study_id)}
+                    onClick={() => handleTriageAction(item)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
                       isCritical
                         ? "bg-rose-600 hover:bg-rose-500 text-white"
@@ -513,10 +563,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
                       <span>Pace: {risk.current_recruitment_pace}/wk</span>
                     </div>
                   </div>
+
+                  {/* Recommended Actions — toggleable */}
+                  {risk.recommended_actions && risk.recommended_actions.length > 0 && (
+                    <div className="mt-2.5">
+                      <button
+                        onClick={() => toggleActions(st.id)}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-amber-950/20 border border-amber-700/30 text-[10px] font-bold text-amber-400 hover:bg-amber-950/30 transition-all"
+                      >
+                        <span className="flex items-center gap-1">
+                          <Lightbulb className="w-3 h-3" />
+                          {risk.recommended_actions.length} Recommended Action(s)
+                        </span>
+                        <ChevronRight className={`w-3 h-3 transition-transform ${expandedActions.has(st.id) ? "rotate-90" : ""}`} />
+                      </button>
+                      {expandedActions.has(st.id) && (
+                        <ul className="mt-1.5 space-y-1.5 pl-1">
+                          {risk.recommended_actions.map((action: string, idx: number) => {
+                            const roleMatch = action.match(/^\[([^\]]+)\]/);
+                            const roleLabel = roleMatch ? roleMatch[1] : null;
+                            const text = roleMatch ? action.slice(roleMatch[0].length + 1) : action;
+                            return (
+                              <li key={idx} className="text-[10px] text-slate-400 leading-snug flex gap-1.5">
+                                <span className="text-amber-400 font-bold">›</span>
+                                <span>
+                                  {roleLabel && (
+                                    <span className="text-[9px] font-bold text-amber-300 bg-amber-500/10 px-1 py-0.5 rounded mr-1 border border-amber-500/20">{roleLabel}</span>
+                                  )}
+                                  {text}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <button
-                  onClick={() => onNavigateTab("studies", st.id)}
+                  onClick={() => router.push(`/studies/${st.id}`)}
                   className="w-full py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-teal-300 text-xs font-bold border border-slate-700/80 transition-all flex items-center justify-center gap-1.5 shadow-sm"
                 >
                   <span>Investigate Protocol</span>
@@ -796,7 +882,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
 
                     <td className="text-right">
                       <button
-                        onClick={() => onNavigateTab("studies", s.id)}
+                        onClick={() => router.push(`/studies/${s.id}`)}
                         className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-sm"
                       >
                         Open Study

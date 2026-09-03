@@ -26,6 +26,7 @@ class TrialRiskBreakdown(BaseModel):
     primary_driver: str
     expected_recruitment_pace: float
     current_recruitment_pace: float
+    recommended_actions: List[str] = []  # Role-specific explainable action items
 
 class AttentionItem(BaseModel):
     id: str
