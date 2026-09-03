@@ -11,6 +11,7 @@ class AlertOut(BaseModel):
     title: str
     message: str
     is_read: bool
+    is_resolved: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

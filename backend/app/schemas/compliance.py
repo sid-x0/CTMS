@@ -6,6 +6,7 @@ class PreFlightItem(BaseModel):
     title: str
     passed: bool
     details: str
+    milestone_id: Optional[int] = None  # Set on milestone-based checks so frontend can call resolve endpoint
 
 class PreFlightCheckResponse(BaseModel):
     study_id: int

@@ -8,14 +8,20 @@ import { Users, Plus, ShieldCheck, ArrowRight, X, AlertCircle } from "lucide-rea
 
 interface ParticipantsViewProps {
   studies: any[];
+  selectedStudyId?: number;
+  onSelectStudy: (id: number | undefined) => void;
   onRefresh: () => void;
 }
 
-export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ studies, onRefresh }) => {
+export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ studies, selectedStudyId: propStudyId, onSelectStudy, onRefresh }) => {
   const { user } = useAuth();
   const canModify = user?.user_role === "Administrator" || user?.user_role === "Principal Investigator" || user?.user_role === "Study Coordinator";
 
-  const [selectedStudyId, setSelectedStudyId] = useState<number>(studies[0]?.id || 1);
+  const [selectedStudyId, setSelectedStudyId] = useState<number>(propStudyId || studies[0]?.id || 1);
+
+  useEffect(() => {
+    if (propStudyId) setSelectedStudyId(propStudyId);
+  }, [propStudyId]);
   const [participants, setParticipants] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

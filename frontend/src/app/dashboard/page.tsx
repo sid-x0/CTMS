@@ -4,7 +4,7 @@ import React from "react";
 import { DashboardView } from "@/components/views/DashboardView";
 import { useApp } from "@/context/AppContext";
 
-export default function Home() {
+export default function DashboardPage() {
   const { dashboardData, navigateTab } = useApp();
 
   return (

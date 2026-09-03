@@ -8,12 +8,14 @@ class Alert(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     study_id = Column(Integer, ForeignKey("studies.id", ondelete="CASCADE"), nullable=True)
-    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="SET NULL"), nullable=True)
     alert_type = Column(String(100), nullable=False)
-    severity = Column(String(50), nullable=False, default="WARNING")  # INFO, WARNING, CRITICAL
+    severity = Column(String(50), nullable=False, default="WARNING")  # INFO, WARNING, HIGH, CRITICAL
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
+    is_resolved = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     study = relationship("Study", back_populates="alerts")
+    site = relationship("Site", foreign_keys=[site_id])

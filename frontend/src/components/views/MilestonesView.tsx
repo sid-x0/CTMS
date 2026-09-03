@@ -7,14 +7,20 @@ import { Flag, Plus, Clock, CheckCircle2, AlertTriangle, Calendar, X } from "luc
 
 interface MilestonesViewProps {
   studies: any[];
+  selectedStudyId?: number;
+  onSelectStudy: (id: number | undefined) => void;
   onRefresh: () => void;
 }
 
-export const MilestonesView: React.FC<MilestonesViewProps> = ({ studies, onRefresh }) => {
+export const MilestonesView: React.FC<MilestonesViewProps> = ({ studies, selectedStudyId: propStudyId, onSelectStudy, onRefresh }) => {
   const { user } = useAuth();
   const canModify = user?.user_role === "Administrator" || user?.user_role === "Principal Investigator" || user?.user_role === "Study Coordinator";
 
-  const [selectedStudyId, setSelectedStudyId] = useState<number>(studies[0]?.id || 1);
+  const [selectedStudyId, setSelectedStudyId] = useState<number>(propStudyId || studies[0]?.id || 1);
+
+  useEffect(() => {
+    if (propStudyId) setSelectedStudyId(propStudyId);
+  }, [propStudyId]);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -125,7 +131,11 @@ export const MilestonesView: React.FC<MilestonesViewProps> = ({ studies, onRefre
         <label className="text-xs font-semibold text-slate-300">Select Protocol:</label>
         <select
           value={selectedStudyId}
-          onChange={(e) => setSelectedStudyId(parseInt(e.target.value))}
+          onChange={(e) => {
+            const id = parseInt(e.target.value);
+            setSelectedStudyId(id);
+            onSelectStudy(id);
+          }}
           className="px-3 py-2 text-xs rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:outline-none focus:border-teal-500 max-w-md"
         >
           {studies.map((s) => (

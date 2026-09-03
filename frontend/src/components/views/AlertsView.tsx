@@ -4,7 +4,11 @@ import React, { useState, useEffect } from "react";
 import { fetchAPI } from "@/lib/api";
 import { Bell, AlertTriangle, CheckCircle, Info } from "lucide-react";
 
-export const AlertsView: React.FC = () => {
+interface AlertsViewProps {
+  onNavigateTab: (tab: string, studyId?: number) => void;
+}
+
+export const AlertsView: React.FC<AlertsViewProps> = ({ onNavigateTab }) => {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

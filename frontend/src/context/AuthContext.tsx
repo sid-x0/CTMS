@@ -48,19 +48,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("ctms_user_session");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setUser(parsed);
-      } catch (e) {
-        localStorage.removeItem("ctms_user_session");
+    const initAuth = async () => {
+      let activeRole: RoleType = "Administrator";
+      const saved = typeof window !== "undefined" ? localStorage.getItem("ctms_user_session") : null;
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.user_role) {
+            activeRole = parsed.user_role;
+            setUser(parsed);
+          }
+        } catch (e) {
+          localStorage.removeItem("ctms_user_session");
+        }
+      } else {
+        const defaultUser = MOCK_ROLE_USERS["Administrator"];
+        const initialSession: UserSession = {
+          user_id: 1,
+          user_name: defaultUser.name,
+          user_email: defaultUser.email,
+          user_role: "Administrator",
+          organization: "All India Institute of Ayurveda",
+          access_token: ""
+        };
+        setUser(initialSession);
       }
-    } else {
-      // Auto login as PI by default for quick demo access
-      switchRole("Principal Investigator").catch(() => {});
-    }
-    setLoading(false);
+
+      try {
+        await switchRole(activeRole);
+      } catch (e) {
+        console.error("Auth initialization error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    initAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -109,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("ctms_user_session", JSON.stringify(session));
       setUser(session);
     } catch (err: any) {
+      console.warn("Backend login failed, using fallback mock session", err);
       // Fallback mock session if backend is initializing
       const session: UserSession = {
         user_id: 1,
@@ -118,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         organization: "All India Institute of Ayurveda",
         access_token: "mock_jwt_token"
       };
+      localStorage.setItem("ctms_jwt_token", "mock_jwt_token");
       localStorage.setItem("ctms_user_session", JSON.stringify(session));
       setUser(session);
     }

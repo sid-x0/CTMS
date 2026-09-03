@@ -29,3 +29,4 @@ class SafetyEvent(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     study = relationship("Study", back_populates="safety_events")
+    site = relationship("Site", foreign_keys=[site_id])
