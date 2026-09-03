@@ -54,7 +54,7 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-52 bg-white border-r border-slate-200 flex flex-col min-h-screen flex-shrink-0">
+    <aside className="w-52 bg-white border-r border-slate-200 flex flex-col h-full flex-shrink-0 overflow-hidden">
       {/* Brand */}
       <div className="h-12 flex items-center gap-2.5 px-4 border-b border-slate-200">
         <div className="w-6 h-6 bg-[#1e3a5f] rounded flex items-center justify-center flex-shrink-0">
@@ -65,6 +65,19 @@ export const Sidebar: React.FC = () => {
           <div className="text-[9px] text-slate-400 mt-0.5 leading-none">NPvCC · Ministry of Ayush</div>
         </div>
       </div>
+
+      {/* Regulator Read-Only Badge */}
+      {user?.user_role === "Regulator / Read-only User" && (
+        <div className="mx-2 mt-2 px-2.5 py-1.5 rounded bg-amber-50 border border-amber-200 text-amber-800">
+          <p className="text-[10px] font-semibold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            READ-ONLY MODE
+          </p>
+          <p className="text-[9px] text-amber-700 leading-tight mt-0.5">
+            Mutations strictly rejected by server
+          </p>
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 py-3 overflow-y-auto">

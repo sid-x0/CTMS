@@ -37,7 +37,7 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="h-12 bg-white border-b border-slate-200 px-4 flex items-center justify-end gap-3 flex-shrink-0 z-40">
+    <header className="h-12 bg-white border-b border-slate-200 px-4 flex items-center justify-end gap-3 flex-shrink-0 z-40 overflow-visible">
       {/* Time */}
       <span className="hidden lg:block text-xs text-slate-400 font-mono" suppressHydrationWarning>
         {timeString || "--:--"} IST

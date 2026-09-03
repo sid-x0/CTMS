@@ -204,18 +204,13 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
           <div className="divide-y divide-slate-100">
             {/* Failed first */}
             {failedChecks.map((item: any) => (
-              <div key={item.key} className={`px-4 py-3.5 border-l-2 flex items-start justify-between gap-4 ${
-                item.severity === "CRITICAL" ? "border-l-red-500 bg-red-50/60" : "border-l-amber-400 bg-amber-50/40"
-              }`}>
+              <div key={item.key} className={`px-4 py-3.5 border-l-2 flex items-start justify-between gap-4 border-l-amber-400 bg-amber-50/40`}>
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <AlertTriangle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${item.severity === "CRITICAL" ? "text-red-600" : "text-amber-600"}`} />
+                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div className="min-w-0 space-y-1">
-                    <p className="text-xs font-semibold text-slate-800">{item.description}</p>
-                    {item.evidence && <p className="text-[11px] text-slate-500 leading-snug">{item.evidence}</p>}
-                    <div className="flex flex-wrap gap-2">
-                      <span className={`ctms-badge-${item.severity === "CRITICAL" ? "critical" : "warning"}`}>{item.severity}</span>
-                      {item.regulation && <span className="ctms-badge-neutral text-[10px]">{item.regulation}</span>}
-                    </div>
+                    <p className="text-xs font-semibold text-slate-800">{item.title}</p>
+                    {item.details && <p className="text-[11px] text-slate-500 leading-snug">{item.details}</p>}
+                    <span className="ctms-badge-warning">Attention Required</span>
                   </div>
                 </div>
                 <div className="flex-shrink-0">
@@ -228,7 +223,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
                       onClick={() => handleResolveMilestone(item)}
                       disabled={resolvingKey === item.key}
                       className="ctms-btn-secondary text-[11px] py-1 px-2.5"
-                      aria-label={`Resolve: ${item.description}`}
+                      aria-label={`Resolve: ${item.title}`}
                     >
                       <Wrench className="w-3 h-3" /> {resolvingKey === item.key ? "Resolving…" : "Resolve"}
                     </button>
@@ -241,7 +236,8 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
               <div key={item.key} className="px-4 py-3 border-l-2 border-l-green-500 flex items-center gap-3 opacity-75">
                 <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-700">{item.description}</p>
+                  <p className="text-xs text-slate-700">{item.title}</p>
+                  {item.details && <p className="text-[10px] text-slate-400">{item.details}</p>}
                 </div>
                 <span className="ctms-badge-success text-[10px]">Pass</span>
               </div>

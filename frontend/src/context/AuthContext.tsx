@@ -131,19 +131,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("ctms_user_session", JSON.stringify(session));
       setUser(session);
     } catch (err: any) {
-      console.warn("Backend login failed, using fallback mock session", err);
-      // Fallback mock session if backend is initializing
-      const session: UserSession = {
-        user_id: 1,
-        user_name: targetUser.name,
-        user_email: targetUser.email,
-        user_role: role,
-        organization: "All India Institute of Ayurveda",
-        access_token: "mock_jwt_token"
-      };
-      localStorage.setItem("ctms_jwt_token", "mock_jwt_token");
-      localStorage.setItem("ctms_user_session", JSON.stringify(session));
-      setUser(session);
+      console.error("Backend login failed for role persona:", err);
+      setError(err.message || "Failed to authenticate with backend");
+      throw err;
     }
   };
 

@@ -1,5 +1,6 @@
 import pytest
 from httpx import AsyncClient
+from app.tests.conftest import AsyncSessionTesting
 
 
 @pytest.mark.asyncio
@@ -608,3 +609,77 @@ async def test_compliance_preflight_and_milestone_resolution(client: AsyncClient
     assert res_resp.status_code == 200
     updated_checklist = {item["key"]: item["passed"] for item in res_resp.json()["checklist"]}
     assert updated_checklist["iec_approval"] is True, "IEC check should be true after milestone resolution"
+
+
+@pytest.mark.asyncio
+async def test_alert_acknowledge_creates_audit_entry(
+    client: AsyncClient, coordinator_headers, regulator_headers
+):
+    """
+    Test 12 (Alert Acknowledge + Audit):
+    - Coordinator can acknowledge an alert → 200 + audit entry created.
+    - Regulator cannot acknowledge an alert → 403.
+    - Audit chain remains valid after acknowledgement.
+    """
+    from app.models.alert import Alert
+    from app.db.session import get_db
+
+    # Create an alert directly in the test DB
+    alert_resp = None
+    # We need to insert an alert. Use the override DB session via a test study approach.
+    # First create a study so we have a study_id
+    study_resp = await client.post("/api/v1/studies", json={
+        "protocol_number": "AIIA-ALERT-001",
+        "title": "Alert Audit Trail Test",
+        "short_title": "Alert Test",
+        "study_type": "Interventional",
+        "intervention_type": "Herbal",
+        "phase": "Phase 1",
+        "sponsor": "AIIA",
+        "principal_investigator": "Dr. Alert PI",
+        "target_enrollment": 20,
+        "status": "Recruiting"
+    }, headers=coordinator_headers)
+    assert study_resp.status_code == 201
+    study_id = study_resp.json()["id"]
+
+    # Directly insert alert via DB session (bypass API since there's no create-alert endpoint)
+    async with AsyncSessionTesting() as db:
+        alert = Alert(
+            study_id=study_id,
+            alert_type="OVERDUE_MILESTONE",
+            severity="WARNING",
+            title="Test Overdue Milestone Alert",
+            message="A milestone is overdue for the alert audit test.",
+            is_read=False,
+            is_resolved=False,
+        )
+        db.add(alert)
+        await db.commit()
+        await db.refresh(alert)
+        alert_id = alert.id
+
+    # 1. Regulator must be forbidden
+    reg_resp = await client.patch(f"/api/v1/alerts/{alert_id}/read", headers=regulator_headers)
+    assert reg_resp.status_code == 403, f"Regulator should be 403, got {reg_resp.status_code}"
+
+    # 2. Coordinator can acknowledge
+    ack_resp = await client.patch(f"/api/v1/alerts/{alert_id}/read", headers=coordinator_headers)
+    assert ack_resp.status_code == 200, f"Coordinator acknowledge failed: {ack_resp.json()}"
+    assert ack_resp.json()["is_read"] is True
+
+    # 3. Audit log should contain an entry for this acknowledgement
+    audit_resp = await client.get("/api/v1/audit-logs", headers=coordinator_headers)
+    assert audit_resp.status_code == 200
+    audit_entries = audit_resp.json()
+    alert_audit = [
+        e for e in audit_entries
+        if e.get("entity_type") == "Alert" and str(e.get("entity_id")) == str(alert_id)
+    ]
+    assert len(alert_audit) >= 1, "Alert acknowledgement should create at least one audit entry"
+    assert alert_audit[0]["action"] == "UPDATE"
+
+    # 4. Audit chain integrity must hold
+    integrity_resp = await client.get("/api/v1/audit-logs/integrity", headers=coordinator_headers)
+    assert integrity_resp.status_code == 200
+    assert integrity_resp.json()["valid"] is True, "Audit chain must be valid after alert acknowledgement"

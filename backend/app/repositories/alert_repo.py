@@ -27,6 +27,10 @@ class AlertRepository:
         await self.db.refresh(alert)
         return alert
 
+    async def get_by_id(self, alert_id: int) -> Optional[Alert]:
+        result = await self.db.execute(select(Alert).where(Alert.id == alert_id))
+        return result.scalars().first()
+
     async def mark_as_read(self, alert_id: int) -> Optional[Alert]:
         result = await self.db.execute(select(Alert).where(Alert.id == alert_id))
         alert = result.scalars().first()

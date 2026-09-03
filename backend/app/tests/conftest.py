@@ -9,9 +9,15 @@ from app.main import app
 from app.models.user import User, UserRole
 from app.core.security import get_password_hash, create_access_token
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+import os
 
-engine_test = create_async_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+TEST_DB_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_ctms.db"))
+TEST_DATABASE_URL = f"sqlite+aiosqlite:///{TEST_DB_FILE}"
+
+engine_test = create_async_engine(
+    TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False}
+)
 AsyncSessionTesting = async_sessionmaker(bind=engine_test, class_=AsyncSession, expire_on_commit=False)
 
 @pytest_asyncio.fixture(autouse=True)
@@ -26,7 +32,12 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionTesting() as session:
         yield session
 
+import app.db.session as db_session
+db_session.engine = engine_test
+db_session.AsyncSessionLocal = AsyncSessionTesting
+
 app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[db_session.get_db] = override_get_db
 
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
