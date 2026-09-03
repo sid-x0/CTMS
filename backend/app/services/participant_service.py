@@ -5,8 +5,8 @@ from fastapi import HTTPException
 from app.repositories.participant_repo import ParticipantRepository
 from app.repositories.site_repo import SiteRepository
 from app.repositories.study_repo import StudyRepository
-from app.models.participant import Participant, ParticipantStatus
-from app.schemas.participant import ParticipantCreate, ParticipantStatusUpdate, ParticipantOut
+from app.models.participant import Participant, ParticipantStatus, ConsentStatus
+from app.schemas.participant import ParticipantCreate, ParticipantStatusUpdate, ConsentUpdate, ParticipantOut
 from app.audit.logger import log_audit_event
 
 VALID_TRANSITIONS = {
@@ -18,6 +18,13 @@ VALID_TRANSITIONS = {
     ParticipantStatus.WITHDRAWN.value: [],
     ParticipantStatus.COMPLETED.value: []
 }
+
+# Statuses that are terminal/inactive for consent-withdrawn participants
+WITHDRAWN_CONSENT_BLOCKED_TRANSITIONS = [
+    ParticipantStatus.ENROLLED.value,
+    ParticipantStatus.RANDOMIZED.value,
+]
+
 
 class ParticipantService:
     def __init__(self, db: AsyncSession):
@@ -59,12 +66,14 @@ class ParticipantService:
             participant_code=p_data.participant_code,
             status=ParticipantStatus.SCREENED.value,
             screening_date=today,
+            consent_status=p_data.consent_status,
+            consent_date=p_data.consent_date,
+            consent_version=p_data.consent_version,
             notes=p_data.notes
         )
 
         created = await self.participant_repo.create(participant)
 
-        # Audit event
         await log_audit_event(
             db=self.db,
             action="CREATE",
@@ -74,10 +83,52 @@ class ParticipantService:
             user_id=current_user.id,
             user_email=current_user.email,
             user_role=current_user.role,
-            new_value={"participant_code": created.participant_code, "status": created.status}
+            new_value={"participant_code": created.participant_code, "status": created.status, "consent_status": created.consent_status}
         )
 
         return ParticipantOut.model_validate(created)
+
+    async def update_consent(self, participant_id: int, consent_data: ConsentUpdate, current_user: any) -> ParticipantOut:
+        """
+        Record or update informed consent status for a participant.
+        This is the correct path to set consent_status = OBTAINED before enrollment.
+        """
+        participant = await self.participant_repo.get_by_id(participant_id)
+        if not participant:
+            raise HTTPException(status_code=404, detail="Participant not found")
+
+        valid_consent_statuses = [c.value for c in ConsentStatus]
+        if consent_data.consent_status not in valid_consent_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid consent_status. Must be one of: {valid_consent_statuses}"
+            )
+
+        prev_consent = participant.consent_status
+        participant.consent_status = consent_data.consent_status
+        if consent_data.consent_date:
+            participant.consent_date = consent_data.consent_date
+        if consent_data.consent_version:
+            participant.consent_version = consent_data.consent_version
+        if consent_data.notes:
+            participant.notes = (participant.notes or "") + f"\n[Consent Update] {consent_data.notes}"
+
+        updated = await self.participant_repo.update(participant)
+
+        await log_audit_event(
+            db=self.db,
+            action="CONSENT_UPDATE",
+            entity_type="Participant",
+            entity_id=str(updated.id),
+            description=f"Informed consent status for participant '{updated.participant_code}' changed from '{prev_consent}' to '{consent_data.consent_status}'",
+            user_id=current_user.id,
+            user_email=current_user.email,
+            user_role=current_user.role,
+            previous_value={"consent_status": prev_consent},
+            new_value={"consent_status": consent_data.consent_status, "consent_version": consent_data.consent_version}
+        )
+
+        return ParticipantOut.model_validate(updated)
 
     async def update_participant_status(self, participant_id: int, update_data: ParticipantStatusUpdate, current_user: any) -> ParticipantOut:
         participant = await self.participant_repo.get_by_id(participant_id)
@@ -93,8 +144,51 @@ class ParticipantService:
         allowed = VALID_TRANSITIONS.get(current_status, [])
         if target_status not in allowed:
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail=f"Invalid state transition: Cannot change participant status from '{current_status}' to '{target_status}'. Allowed transitions: {allowed}"
+            )
+
+        # ---------------------------------------------------------------
+        # INFORMED CONSENT ENFORCEMENT (business rule)
+        # A participant MUST have consent_status == OBTAINED before
+        # transitioning to ENROLLED status.
+        # ---------------------------------------------------------------
+        if target_status == ParticipantStatus.ENROLLED.value:
+            if participant.consent_status != ConsentStatus.OBTAINED.value:
+                # Record the rejected attempt in audit trail
+                await log_audit_event(
+                    db=self.db,
+                    action="ENROLLMENT_REJECTED",
+                    entity_type="Participant",
+                    entity_id=str(participant.id),
+                    description=(
+                        f"Enrollment rejected for participant '{participant.participant_code}': "
+                        f"consent_status is '{participant.consent_status}'. "
+                        f"Informed consent must be OBTAINED before enrollment."
+                    ),
+                    user_id=current_user.id,
+                    user_email=current_user.email,
+                    user_role=current_user.role,
+                    previous_value={"status": current_status, "consent_status": participant.consent_status},
+                    new_value={"attempted_status": target_status, "blocked_reason": "consent_not_obtained"}
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Enrollment blocked: participant '{participant.participant_code}' "
+                        f"has consent_status='{participant.consent_status}'. "
+                        f"Informed consent (consent_status=OBTAINED) must be recorded before enrollment."
+                    )
+                )
+
+        # Block further enrollment/randomization if consent was withdrawn
+        if participant.consent_status == ConsentStatus.WITHDRAWN.value and target_status in WITHDRAWN_CONSENT_BLOCKED_TRANSITIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Transition to '{target_status}' is blocked: participant '{participant.participant_code}' "
+                    f"has withdrawn consent. Only withdrawal or completion allowed."
+                )
             )
 
         prev_status = participant.status
@@ -125,7 +219,6 @@ class ParticipantService:
 
         updated = await self.participant_repo.update(participant)
 
-        # Audit event
         await log_audit_event(
             db=self.db,
             action="STATUS_CHANGE",

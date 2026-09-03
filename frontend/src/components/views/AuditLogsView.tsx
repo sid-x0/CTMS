@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { fetchAPI } from "@/lib/api";
-import { FileText, Search, Shield, Eye, Lock, X } from "lucide-react";
+import { FileText, Search, Shield, Eye, Lock, X, CheckCircle, AlertTriangle } from "lucide-react";
 
 export const AuditLogsView: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [integrityResult, setIntegrityResult] = useState<any | null>(null);
+  const [checkingIntegrity, setCheckingIntegrity] = useState(false);
 
   const loadAuditLogs = async () => {
     setLoading(true);
@@ -19,6 +21,19 @@ export const AuditLogsView: React.FC = () => {
       console.error("Failed to fetch audit logs", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkIntegrity = async () => {
+    setCheckingIntegrity(true);
+    try {
+      const result = await fetchAPI("/audit-logs/integrity");
+      setIntegrityResult(result);
+    } catch (err) {
+      console.error("Failed to check integrity", err);
+      setIntegrityResult({ valid: false, total_records: 0, message: "Failed to reach integrity endpoint." });
+    } finally {
+      setCheckingIntegrity(false);
     }
   };
 
@@ -43,12 +58,33 @@ export const AuditLogsView: React.FC = () => {
             <FileText className="w-5 h-5 text-teal-400" />
             Append-Only Audit Trail
           </h2>
-          <p className="text-xs text-slate-400">Regulatory system traceability, user action records and immutable diff log</p>
+          <p className="text-xs text-slate-400">Regulatory system traceability, user action records and SHA-256 hash-chain tamper evidence</p>
+          <p className="text-[10px] text-slate-500 italic mt-0.5">Hash chain is tamper-evident, not cryptographically signed. Row deletion is not detected.</p>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400">
-          <Lock className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Immutable Audit Log Standard</span>
+        <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={checkIntegrity}
+            disabled={checkingIntegrity}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-teal-600 text-xs text-slate-300 hover:text-teal-300 transition-all"
+          >
+            <Shield className="w-3.5 h-3.5 text-teal-400" />
+            {checkingIntegrity ? "Verifying..." : "Verify Chain Integrity"}
+          </button>
+          {integrityResult && (
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+              integrityResult.valid
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+            }`}>
+              {integrityResult.valid
+                ? <CheckCircle className="w-3.5 h-3.5" />
+                : <AlertTriangle className="w-3.5 h-3.5" />}
+              {integrityResult.valid
+                ? `Chain valid (${integrityResult.total_records} records)`
+                : `Integrity issue at record #${integrityResult.first_invalid_id}`}
+            </div>
+          )}
         </div>
       </div>
 
@@ -158,17 +194,30 @@ export const AuditLogsView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-slate-400 font-semibold mb-1">Previous Value:</h4>
+                  <h4 className="text-slate-400 font-semibold mb-1">Previous Value (Before):</h4>
                   <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-rose-300 overflow-x-auto max-h-48">
                     {selectedLog.previous_value ? selectedLog.previous_value : "None (New Entity)"}
                   </pre>
                 </div>
 
                 <div>
-                  <h4 className="text-slate-400 font-semibold mb-1">New Value:</h4>
+                  <h4 className="text-slate-400 font-semibold mb-1">New Value (After):</h4>
                   <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-emerald-300 overflow-x-auto max-h-48">
                     {selectedLog.new_value ? selectedLog.new_value : "None"}
                   </pre>
+                </div>
+              </div>
+
+              {/* Tamper-evident hash chain block */}
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-[11px]">
+                <p className="text-slate-400 font-semibold uppercase text-[10px]">Tamper-Evident Hash Chain Link (SHA-256):</p>
+                <div className="truncate">
+                  <span className="text-slate-500">Record Hash: </span>
+                  <span className="text-teal-400 font-bold">{selectedLog.record_hash || "Legacy unhashed entry"}</span>
+                </div>
+                <div className="truncate">
+                  <span className="text-slate-500">Previous Hash: </span>
+                  <span className="text-slate-400">{selectedLog.previous_hash || "Genesis (Initial entry)"}</span>
                 </div>
               </div>
             </div>

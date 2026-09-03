@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Text, DateTime
 from app.db.session import Base
 
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
@@ -17,3 +18,8 @@ class AuditLog(Base):
     new_value = Column(Text, nullable=True)
     ip_address = Column(String(100), nullable=True)
     description = Column(Text, nullable=False)
+
+    # Hash chaining for tamper-evidence (SHA-256)
+    # hash_n = SHA256(current_payload_json + previous_hash)
+    previous_hash = Column(String(64), nullable=True)   # hash of the previous record
+    record_hash = Column(String(64), nullable=True)     # hash of this record's payload

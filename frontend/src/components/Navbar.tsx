@@ -81,12 +81,12 @@ export const Navbar: React.FC = () => {
         <span className="text-slate-600">|</span>
         <span className="flex items-center gap-1 text-slate-300">
           <Lock className="w-3 h-3 text-teal-400" />
-          21 CFR Part 11 Aligned
+          Hash-Chained Audit Trail
         </span>
         <span className="text-slate-600">|</span>
         <span className="flex items-center gap-1 text-slate-300">
           <CheckCircle2 className="w-3 h-3 text-cyan-400" />
-          CDSCO / CTRI Synced
+          CTRI Format Aligned
         </span>
       </div>
 
@@ -134,7 +134,7 @@ export const Navbar: React.FC = () => {
             <div className="absolute right-0 mt-2 w-72 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl py-1.5 z-50">
               <div className="px-3 py-2 border-b border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
                 <span>Switch Institutional Persona</span>
-                <span className="text-teal-400 font-normal">Mock RBAC</span>
+                <span className="text-teal-400 font-normal">JWT-Authenticated</span>
               </div>
               <div className="max-h-72 overflow-y-auto py-1">
                 {ROLES.map((r) => (

@@ -128,7 +128,10 @@ export const SafetyView: React.FC<SafetyViewProps> = ({ studies, selectedStudyId
             <ShieldAlert className="w-5 h-5 text-rose-400" />
             National Pharmacovigilance Coordination Center (NPvCC Workspace)
           </h2>
-          <p className="text-xs text-slate-400">Expedited SAE reporting, cross-trial signal detection & safety governance</p>
+          <p className="text-xs text-slate-400">Expedited SAE review workflow, potential cross-trial signal detection & safety governance</p>
+          <p className="text-[10px] text-slate-500 mt-0.5 italic">
+            Synthetic clinical-trial data. Regulatory reporting actions are prototype state transitions; no external CDSCO/DCGI/IEC filing occurs.
+          </p>
         </div>
         {canReport && (
           <button
@@ -277,16 +280,17 @@ export const SafetyView: React.FC<SafetyViewProps> = ({ studies, selectedStudyId
                       {e.status === "Under Review" && canReport ? (
                         reviewSuccess === e.id ? (
                           <span className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
-                            <CheckCircle className="w-3.5 h-3.5" /> Filed!
+                            <CheckCircle className="w-3.5 h-3.5" /> Prototype Transition Complete
                           </span>
                         ) : (
                           <button
                             onClick={() => handleMarkReviewed(e)}
                             disabled={reviewingId === e.id}
+                            title="Prototype state transition: updates internal safety event status and resolves alerts. No live regulatory submission occurs."
                             className="px-2.5 py-1 rounded bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 text-[10px] font-bold border border-teal-500/30 transition-colors disabled:opacity-50 flex items-center gap-1"
                           >
                             <CheckSquare className="w-3 h-3" />
-                            {reviewingId === e.id ? "Filing..." : "Report to IEC/DCGI"}
+                            {reviewingId === e.id ? "Updating..." : "Report (Prototype State Transition)"}
                           </button>
                         )
                       ) : null}

@@ -105,17 +105,17 @@ def calculate_study_risk(
         )
 
     # ------------------------------------------------------------------ #
-    # 5. Safety Score (0 to 15)
+    # 5. Safety Score (0 to 15) — Active 'Under Review' events only
     # ------------------------------------------------------------------ #
-    sae_events = [e for e in safety_events if e.seriousness or e.event_type == "SAE"]
-    safety_score = min(len(sae_events) * 8 + (len(safety_events) - len(sae_events)) * 2, 15)
-    if sae_events and safety_score > 8:
-        primary_driver = f"Serious Adverse Event ({sae_events[0].event_term}) under review"
-        for sae in sae_events[:2]:
+    active_sae_events = [e for e in safety_events if (e.seriousness or e.event_type == "SAE") and e.status == "Under Review"]
+    active_ae_events = [e for e in safety_events if not (e.seriousness or e.event_type == "SAE") and e.status == "Under Review"]
+    safety_score = min(len(active_sae_events) * 8 + len(active_ae_events) * 2, 15)
+    if active_sae_events and safety_score >= 8:
+        primary_driver = f"Serious Adverse Event ({active_sae_events[0].event_term}) under review"
+        for sae in active_sae_events[:2]:
             recommended_actions.append(
-                f"[Pharmacovigilance User] SAE '{sae.event_term}' (Causality: {sae.causality}, "
-                f"Subject: {sae.participant_code or 'N/A'}) must be reported to IEC and DCGI within 24h. "
-                f"Ensure the expedited pharmacovigilance report is filed."
+                f"[Pharmacovigilance User] Active SAE '{sae.event_term}' (Causality: {sae.causality}, "
+                f"Subject: {sae.participant_code or 'N/A'}) requires internal expedited review and prototype reporting transition."
             )
 
     # ------------------------------------------------------------------ #

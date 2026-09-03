@@ -121,20 +121,23 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
             <CheckSquare className="w-5 h-5 text-teal-400" />
             Compliance Pre-Flight Check & Interoperability Center
           </h2>
-          <p className="text-xs text-slate-400">Strict trial activation gating, human-in-the-loop terminology mapping & FHIR/CDISC export</p>
+          <p className="text-xs text-slate-400">Strict trial activation gating, human-in-the-loop terminology prototype & export roadmap</p>
+          <p className="text-[10px] text-slate-500 mt-0.5 italic">
+            Synthetic clinical-trial data. FHIR R4 and CDISC SDTM are architecture roadmap representations.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportFHIR}
             className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-teal-300 hover:bg-slate-800 text-xs font-semibold flex items-center gap-1.5"
           >
-            <Code className="w-3.5 h-3.5 text-teal-400" /> Preview FHIR R4
+            <Code className="w-3.5 h-3.5 text-teal-400" /> [Roadmap] Preview FHIR R4
           </button>
           <button
             onClick={handleExportCDISC}
             className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-sky-300 hover:bg-slate-800 text-xs font-semibold flex items-center gap-1.5"
           >
-            <FileCode className="w-3.5 h-3.5 text-sky-400" /> Preview CDISC SDTM
+            <FileCode className="w-3.5 h-3.5 text-sky-400" /> [Roadmap] Preview CDISC SDTM
           </button>
         </div>
       </div>
@@ -265,10 +268,10 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
         <div className="border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
             <Search className="w-4 h-4 text-teal-400" />
-            AI-ASSISTED CLINICAL TERMINOLOGY MAPPING (Human-in-the-Loop)
+            CLINICAL TERMINOLOGY MAPPING ASSISTANT (Prototype Human-in-the-Loop)
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Standardizes indigenous Ayurvedic clinical terms into MedDRA / SNOMED CT aligned regulatory codes with explicit investigator review.
+            Demonstrates alignment of indigenous Ayurvedic clinical terms with regulatory dictionary codes (prototype lookup table; not live MedDRA/WHODrug API).
           </p>
         </div>
 

@@ -253,6 +253,9 @@ async def seed_data():
                 site_id=site_aiia_ash.id,
                 participant_code=f"ASH-DEL-{i:03d}",
                 status=ParticipantStatus.RANDOMIZED.value if i % 2 == 0 else ParticipantStatus.ENROLLED.value,
+                consent_status="OBTAINED",
+                consent_date=today - timedelta(days=95 - i),
+                consent_version="ICF-v1.2",
                 screening_date=today - timedelta(days=100 - i),
                 enrollment_date=today - timedelta(days=90 - i),
                 randomization_date=today - timedelta(days=80 - i) if i % 2 == 0 else None,
@@ -267,11 +270,26 @@ async def seed_data():
                 site_id=site_bhu.id,
                 participant_code=f"ASH-BHU-{i:03d}",
                 status=ParticipantStatus.ENROLLED.value if i <= 15 else ParticipantStatus.WITHDRAWN.value,
+                consent_status="OBTAINED" if i <= 15 else "WITHDRAWN",
+                consent_date=today - timedelta(days=75 - i),
+                consent_version="ICF-v1.2",
                 screening_date=today - timedelta(days=80 - i),
                 enrollment_date=today - timedelta(days=70 - i),
                 notes="Site BHU participant."
             )
             db.add(p)
+
+        # Demo participant: consent NOT_OBTAINED for TEST 4 verification
+        p_demo = Participant(
+            study_id=study1.id,
+            site_id=site_aiia_ash.id,
+            participant_code="ASH-DEL-DEMO",
+            status=ParticipantStatus.ELIGIBLE.value,
+            consent_status="NOT_OBTAINED",
+            screening_date=today - timedelta(days=5),
+            notes="Demo participant: consent not yet obtained. Use for Test 4 consent workflow verification."
+        )
+        db.add(p_demo)
 
         # Study 3 (Brahmi) — site 6 (AIIA Neuro): 30 participants
         study4 = created_studies[3]
@@ -374,7 +392,7 @@ async def seed_data():
             {"study_idx": 4, "type": "CTRI Registration", "name": "CTRI Public Registry Entry — Triphala Metabolic Study", "plan": today + timedelta(days=15), "actual": None, "status": MilestoneStatus.PENDING.value, "notes": "CTRI registration form submitted. Awaiting registry confirmation number."},
 
             # ─── Study 5 (Guduchi — PRIMARY DEMO) ───
-            {"study_idx": 5, "type": "IEC Approval", "name": "Institutional Ethics Clearance — Guduchi Diabetes Trial", "plan": today - timedelta(days=100), "actual": today - timedelta(days=98), "status": MilestoneStatus.COMPLETED.value, "notes": "IEC clearance certificate no. AIIA-IEC-2025-064 issued."},
+            {"study_idx": 5, "type": "IEC Approval", "name": "Institutional Ethics Clearance — Guduchi Immune Diabetes Trial", "plan": today - timedelta(days=100), "actual": today - timedelta(days=98), "status": MilestoneStatus.COMPLETED.value, "notes": "IEC clearance certificate no. AIIA-IEC-2025-064 issued."},
             {"study_idx": 5, "type": "CTRI Registration", "name": "CTRI Public Registry Entry (CTRI/2025/06/03782)", "plan": today - timedelta(days=92), "actual": today - timedelta(days=90), "status": MilestoneStatus.COMPLETED.value, "notes": "Registered under CTRI/2025/06/03782."},
             {"study_idx": 5, "type": "Site Activation", "name": "AIIA Diabetes Clinic Site Activation", "plan": today - timedelta(days=88), "actual": today - timedelta(days=86), "status": MilestoneStatus.COMPLETED.value, "notes": None},
             {"study_idx": 5, "type": "Site Activation", "name": "Govt Ayurveda College Trivandrum Site Activation", "plan": today - timedelta(days=85), "actual": today - timedelta(days=82), "status": MilestoneStatus.COMPLETED.value, "notes": None},
@@ -519,7 +537,7 @@ async def seed_data():
                 alert_type="SAE_DEADLINE",
                 severity="CRITICAL",
                 title="SAE Reporting Deadline — GUD-DEL-028 (24h)",
-                message="Serious Adverse Event 'Elevated Hepatic Enzymes' for subject GUD-DEL-028 in Guduchi Diabetes Trial requires expedited IEC/DCGI filing. Deadline: within 24 hours of onset report.",
+                message="Serious Adverse Event 'Elevated Hepatic Enzymes' for subject GUD-DEL-028 in Guduchi Immune Diabetes Trial requires expedited internal IEC review and prototype reporting transition. Reporting deadline within 24 hours of onset report.",
                 is_read=False
             ),
             # Guduchi study — HIGH: Trivandrum recruitment lag
@@ -599,11 +617,27 @@ async def seed_data():
             (audit_ts_base + timedelta(hours=4), "CREATE", "Study", "6", "pi@aiia.gov.in", UserRole.PRINCIPAL_INVESTIGATOR.value, None, "Draft", "Created clinical study 'AYU-CT-2025-006: Guduchi Immune Diabetes Trial'"),
             (audit_ts_base + timedelta(hours=6), "STATUS_CHANGE", "Study", "6", "admin@aiia.gov.in", UserRole.ADMINISTRATOR.value, "IEC Approved", "Recruiting", "Guduchi study activated for recruitment after CTRI registration confirmation."),
             (audit_ts_base + timedelta(hours=24), "CREATE", "SafetyEvent", "1", "pv@aiia.gov.in", UserRole.PHARMACOVIGILANCE_USER.value, None, "Under Review", "Recorded SAE 'Transaminase Elevation (ALT > 3x ULN)' for subject ASH-DEL-012 in Ashwagandha Trial."),
-            (audit_ts_base + timedelta(hours=45), "CREATE", "SafetyEvent", "5", "pv@aiia.gov.in", UserRole.PHARMACOVIGILANCE_USER.value, None, "Under Review", "Recorded SAE 'Elevated Hepatic Enzymes' for subject GUD-DEL-028 in Guduchi Diabetes Trial."),
-            (audit_ts_base + timedelta(hours=46), "CREATE", "Alert", "1", "coordinator@aiia.gov.in", UserRole.STUDY_COORDINATOR.value, None, None, "System alert generated: SAE reporting deadline within 24h for Guduchi Trial subject GUD-DEL-028."),
+            (audit_ts_base + timedelta(hours=45), "CREATE", "SafetyEvent", "5", "pv@aiia.gov.in", UserRole.PHARMACOVIGILANCE_USER.value, None, "Under Review", "Recorded SAE 'Elevated Hepatic Enzymes' for subject GUD-DEL-028 in Guduchi Immune Diabetes Trial."),
+            (audit_ts_base + timedelta(hours=46), "CREATE", "Alert", "1", "coordinator@aiia.gov.in", UserRole.STUDY_COORDINATOR.value, None, None, "System alert generated: SAE reporting deadline within 24h for Guduchi Immune Diabetes Trial subject GUD-DEL-028."),
         ]
 
+        from app.audit.logger import _compute_hash, _normalize_timestamp
+
+        prev_hash = None
         for ev in audit_events:
+            payload = {
+                "timestamp": _normalize_timestamp(ev[0]),
+                "user_id": None,
+                "user_email": ev[4],
+                "user_role": ev[5],
+                "action": ev[1],
+                "entity_type": ev[2],
+                "entity_id": ev[3],
+                "previous_value": ev[6],
+                "new_value": ev[7],
+                "description": ev[8],
+            }
+            rec_hash = _compute_hash(payload, prev_hash)
             log = AuditLog(
                 timestamp=ev[0],
                 action=ev[1],
@@ -613,11 +647,14 @@ async def seed_data():
                 user_role=ev[5],
                 previous_value=ev[6],
                 new_value=ev[7],
-                description=ev[8]
+                description=ev[8],
+                previous_hash=prev_hash,
+                record_hash=rec_hash
             )
             db.add(log)
-
-        await db.commit()
+            await db.commit()
+            await db.refresh(log)
+            prev_hash = rec_hash
         print("SEEDING COMPLETED SUCCESSFULLY!")
         print(f"  Studies: {len(created_studies)}")
         print(f"  Sites: {len(created_sites)}")

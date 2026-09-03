@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: "safety", label: "Pharmacovigilance (NPvCC)", icon: ShieldAlert, badgeText: "PV Core" },
         { id: "compliance", label: "Compliance & Pre-Flight", icon: CheckSquare },
-        { id: "audit", label: "21 CFR Part 11 Audit Trail", icon: FileText },
+        { id: "audit", label: "Append-Only Audit Trail", icon: FileText },
       ]
     },
     ...(isAdmin ? [{
@@ -113,13 +113,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span className="truncate">{item.label}</span>
                   </div>
 
-                  {item.badge && item.badge > 0 ? (
+                  {(item as any).badge && (item as any).badge > 0 ? (
                     <span className="px-1.5 py-0.2 rounded-md text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                      {item.badge}
+                      {(item as any).badge}
                     </span>
-                  ) : item.badgeText ? (
+                  ) : (item as any).badgeText ? (
                     <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                      {item.badgeText}
+                      {(item as any).badgeText}
                     </span>
                   ) : null}
                 </button>

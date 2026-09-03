@@ -1,8 +1,9 @@
 import enum
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.db.session import Base
+
 
 class ParticipantStatus(str, enum.Enum):
     SCREENED = "Screened"
@@ -13,6 +14,13 @@ class ParticipantStatus(str, enum.Enum):
     COMPLETED = "Completed"
     SCREEN_FAILURE = "Screen Failure"
 
+
+class ConsentStatus(str, enum.Enum):
+    NOT_OBTAINED = "NOT_OBTAINED"
+    OBTAINED = "OBTAINED"
+    WITHDRAWN = "WITHDRAWN"
+
+
 class Participant(Base):
     __tablename__ = "participants"
 
@@ -21,7 +29,12 @@ class Participant(Base):
     site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False)
     participant_code = Column(String(100), unique=True, index=True, nullable=False)
     status = Column(String(50), nullable=False, default=ParticipantStatus.SCREENED.value)
-    
+
+    # Informed Consent fields (ICH E6 GCP requirement)
+    consent_status = Column(String(50), nullable=False, default=ConsentStatus.NOT_OBTAINED.value)
+    consent_date = Column(Date, nullable=True)
+    consent_version = Column(String(50), nullable=True)  # e.g. "ICF-v2.1"
+
     screening_date = Column(Date, nullable=True)
     enrollment_date = Column(Date, nullable=True)
     randomization_date = Column(Date, nullable=True)
