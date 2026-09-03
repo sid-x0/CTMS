@@ -2,7 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { fetchAPI } from "@/lib/api";
-import { CheckSquare, AlertCircle, FileCode, CheckCircle2, XCircle, Search, Code, Wrench } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import {
+  CheckSquare, AlertTriangle, CheckCircle2, Clock,
+  RefreshCw, Code, XCircle, Wrench, Shield, Search,
+} from "lucide-react";
 
 interface ComplianceViewProps {
   studies: any[];
@@ -11,368 +15,335 @@ interface ComplianceViewProps {
   onRefresh: () => void;
 }
 
+function milestoneStatus(m: any, today: string) {
+  if (m.status === "Completed") return "completed";
+  if (m.planned_date < today) return "overdue";
+  const soon = new Date(new Date().getTime() + 7 * 86400000).toISOString().split("T")[0];
+  if (m.planned_date <= soon) return "soon";
+  return "upcoming";
+}
+
+/* ── Interop modal (preserved logic) ────────────────────────────────────── */
+function InteropModal({ data, title, onClose }: { data: any; title: string; onClose: () => void }) {
+  return (
+    <div className="ctms-modal-overlay">
+      <div className="ctms-modal max-w-3xl max-h-[85vh] flex flex-col">
+        <div className="ctms-modal-header">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+              <Code className="w-4 h-4 text-[#1e3a5f]" /> {title}
+            </h3>
+            <p className="text-[10px] text-slate-400 mt-0.5 italic">Architecture roadmap preview — not a live regulatory export. Synthetic data only.</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Close"><XCircle className="w-4 h-4" /></button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-5">
+          <pre className="text-[11px] font-mono text-slate-700 bg-slate-50 border border-slate-200 rounded p-4 overflow-x-auto whitespace-pre-wrap">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </div>
+        <div className="ctms-modal-footer">
+          <button onClick={onClose} className="ctms-btn-secondary">Close Preview</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selectedStudyId, onSelectStudy, onRefresh }) => {
+  const { user } = useAuth();
+  const canResolve =
+    user?.user_role === "Administrator" || user?.user_role === "Principal Investigator" ||
+    user?.user_role === "Study Coordinator" || user?.user_role === "Ethics Committee Member";
+
+  const today = new Date().toISOString().split("T")[0];
+
   const [activeStudyId, setActiveStudyId] = useState<number>(selectedStudyId || studies[0]?.id || 1);
   const [preflightData, setPreflightData] = useState<any | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [milestonesAll, setMilestonesAll] = useState<any[]>([]);
+  const [loading, setLoading]             = useState(false);
+  const [resolvingKey, setResolvingKey]   = useState<string | null>(null);
+  const [resolveOk, setResolveOk]         = useState<Set<string>>(new Set());
+  const [ayurvedaTerm, setAyurvedaTerm]   = useState("Aruchi");
+  const [termResult, setTermResult]       = useState<any | null>(null);
+  const [termLoading, setTermLoading]     = useState(false);
+  const [interopData, setInteropData]     = useState<any | null>(null);
+  const [interopTitle, setInteropTitle]   = useState("");
 
-  // Terminology state
-  const [ayurvedaTerm, setAyurvedaTerm] = useState("Aruchi");
-  const [termResult, setTermResult] = useState<any | null>(null);
-  const [termLoading, setTermLoading] = useState(false);
-
-  // Interop modal
-  const [interopData, setInteropData] = useState<any | null>(null);
-  const [interopTitle, setInteropTitle] = useState("");
-
-  // Resolve state per milestone key
-  const [resolvingKey, setResolvingKey] = useState<string | null>(null);
-  const [resolveSuccess, setResolveSuccess] = useState<string | null>(null);
-
-  // Sync with parent selectedStudyId
-  useEffect(() => {
-    if (selectedStudyId) setActiveStudyId(selectedStudyId);
-  }, [selectedStudyId]);
+  useEffect(() => { if (selectedStudyId) setActiveStudyId(selectedStudyId); }, [selectedStudyId]);
 
   const loadPreflight = async (studyId?: number) => {
     const id = studyId ?? activeStudyId;
     if (!id) return;
     setLoading(true);
     try {
-      const data = await fetchAPI(`/compliance/studies/${id}/preflight`);
-      setPreflightData(data);
-    } catch (err) {
-      console.error("Failed to fetch pre-flight check", err);
-    } finally {
-      setLoading(false);
-    }
+      const [pf, dashData] = await Promise.all([
+        fetchAPI(`/compliance/studies/${id}/preflight`),
+        fetchAPI("/dashboard/portfolio").catch(() => null),
+      ]);
+      setPreflightData(pf);
+      if (dashData?.upcoming_deadlines) setMilestonesAll(dashData.upcoming_deadlines);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
   };
+
+  useEffect(() => { loadPreflight(); }, [activeStudyId]);
 
   const handleSuggestTerminology = async (termToSearch?: string) => {
     const term = termToSearch || ayurvedaTerm;
     if (!term) return;
     setTermLoading(true);
     try {
-      const res = await fetchAPI("/compliance/terminology/suggest", {
-        method: "POST",
-        body: JSON.stringify({ ayurveda_term: term })
-      });
-      setTermResult(res);
-    } catch (err) {
-      console.error("Failed to suggest terminology", err);
-    } finally {
-      setTermLoading(false);
-    }
+      setTermResult(await fetchAPI("/compliance/terminology/suggest", { method: "POST", body: JSON.stringify({ ayurveda_term: term }) }));
+    } catch { /* silent */ }
+    finally { setTermLoading(false); }
   };
 
-  useEffect(() => {
-    loadPreflight();
-  }, [activeStudyId]);
-
-  useEffect(() => {
-    handleSuggestTerminology("Aruchi");
-  }, []);
+  useEffect(() => { handleSuggestTerminology("Aruchi"); }, []);
 
   const handleExportFHIR = async () => {
-    try {
-      const data = await fetchAPI(`/compliance/studies/${activeStudyId}/fhir`);
-      setInteropData(data);
-      setInteropTitle("HL7 FHIR R4 ResearchStudy Resource Representation");
-    } catch (err) { console.error(err); }
+    try { const d = await fetchAPI(`/compliance/studies/${activeStudyId}/fhir`); setInteropData(d); setInteropTitle("HL7 FHIR R4 ResearchStudy Resource — Architecture Roadmap Preview"); }
+    catch { /* silent */ }
   };
-
   const handleExportCDISC = async () => {
-    try {
-      const data = await fetchAPI(`/compliance/studies/${activeStudyId}/cdisc`);
-      setInteropData(data);
-      setInteropTitle("CDISC SDTM Trial Summary (TS) Dataset Representation");
-    } catch (err) { console.error(err); }
+    try { const d = await fetchAPI(`/compliance/studies/${activeStudyId}/cdisc`); setInteropData(d); setInteropTitle("CDISC SDTM Trial Summary Dataset — Architecture Roadmap Preview"); }
+    catch { /* silent */ }
   };
 
-  /**
-   * Resolve a failed preflight item by marking its milestone as Complete.
-   * The backend re-runs the preflight check and returns updated results.
-   */
   const handleResolveMilestone = async (item: any) => {
     if (!item.milestone_id) return;
     setResolvingKey(item.key);
     try {
-      const updatedPreflight = await fetchAPI(
-        `/compliance/studies/${activeStudyId}/milestones/${item.milestone_id}/complete`,
-        { method: "POST" }
-      );
-      setPreflightData(updatedPreflight);
-      setResolveSuccess(item.key);
-      onRefresh(); // refresh audit trail / alerts
-      setTimeout(() => setResolveSuccess(null), 3000);
-    } catch (err) {
-      console.error("Failed to resolve milestone", err);
-    } finally {
-      setResolvingKey(null);
-    }
+      const updated = await fetchAPI(`/compliance/studies/${activeStudyId}/milestones/${item.milestone_id}/complete`, { method: "POST" });
+      setPreflightData(updated);
+      setResolveOk(prev => new Set(prev).add(item.key));
+      onRefresh();
+      setTimeout(() => setResolveOk(prev => { const n = new Set(prev); n.delete(item.key); return n; }), 4000);
+    } catch { /* silent */ }
+    finally { setResolvingKey(null); }
   };
 
+  const activeStudy    = studies.find(s => s.id === activeStudyId);
+  const failedChecks   = preflightData?.checklist?.filter((c: any) => !c.passed) ?? [];
+  const passedChecks   = preflightData?.checklist?.filter((c: any) => c.passed) ?? [];
+  const overdueMilestones = milestonesAll.filter(m => m.planned_date < today);
+  const upcomingMilestones = milestonesAll.filter(m => m.planned_date >= today);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-6xl">
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-            <CheckSquare className="w-5 h-5 text-teal-400" />
-            Compliance Pre-Flight Check & Interoperability Center
-          </h2>
-          <p className="text-xs text-slate-400">Strict trial activation gating, human-in-the-loop terminology prototype & export roadmap</p>
-          <p className="text-[10px] text-slate-500 mt-0.5 italic">
-            Synthetic clinical-trial data. FHIR R4 and CDISC SDTM are architecture roadmap representations.
-          </p>
+          <h1 className="ctms-page-title">Compliance &amp; Trial Readiness</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Ethics, CTRI registration and operational readiness across the portfolio</p>
+          <p className="text-[10px] text-slate-400 italic mt-0.5">Synthetic data · Prototype pre-flight check · FHIR R4 and CDISC are architecture roadmap representations</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportFHIR}
-            className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-teal-300 hover:bg-slate-800 text-xs font-semibold flex items-center gap-1.5"
-          >
-            <Code className="w-3.5 h-3.5 text-teal-400" /> [Roadmap] Preview FHIR R4
+          <button onClick={() => loadPreflight()} className="ctms-btn-ghost text-xs"><RefreshCw className="w-3.5 h-3.5" /></button>
+          <button onClick={handleExportFHIR} className="ctms-btn-secondary text-xs" title="Architecture roadmap preview only">
+            <Code className="w-3.5 h-3.5" /> FHIR R4
           </button>
-          <button
-            onClick={handleExportCDISC}
-            className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-sky-300 hover:bg-slate-800 text-xs font-semibold flex items-center gap-1.5"
-          >
-            <FileCode className="w-3.5 h-3.5 text-sky-400" /> [Roadmap] Preview CDISC SDTM
+          <button onClick={handleExportCDISC} className="ctms-btn-secondary text-xs" title="Architecture roadmap preview only">
+            <Code className="w-3.5 h-3.5" /> CDISC
           </button>
         </div>
       </div>
 
-      {/* Select Protocol */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-4">
-        <label className="text-xs font-semibold text-slate-300 shrink-0">Select Protocol for Pre-Flight Evaluation:</label>
-        <select
-          value={activeStudyId}
-          onChange={(e) => {
-            const id = parseInt(e.target.value);
-            setActiveStudyId(id);
-            onSelectStudy(id);
-          }}
-          className="px-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:border-teal-500 max-w-md"
-        >
-          {studies.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.protocol_number}: {s.short_title} ({s.status})
-            </option>
-          ))}
-        </select>
+      {/* Study selector + summary */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <label className="ctms-section-title whitespace-nowrap">Protocol</label>
+          <select
+            value={activeStudyId}
+            onChange={e => { const id = parseInt(e.target.value); setActiveStudyId(id); onSelectStudy(id); }}
+            className="ctms-select text-xs py-1.5 max-w-xs"
+            aria-label="Select study"
+          >
+            {studies.map(s => <option key={s.id} value={s.id}>{s.protocol_number}: {s.short_title}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className={`flex items-center gap-2 px-3 py-2 rounded border ${preflightData?.ready_for_activation ? "bg-green-50 border-green-200" : preflightData ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-200"}`}>
+            {preflightData?.ready_for_activation
+              ? <CheckCircle2 className="w-4 h-4 text-green-600" />
+              : <AlertTriangle className="w-4 h-4 text-amber-600" />
+            }
+            <div>
+              <p className={`text-xs font-semibold ${preflightData?.ready_for_activation ? "text-green-700" : preflightData ? "text-amber-700" : "text-slate-600"}`}>
+                {preflightData?.ready_for_activation ? "Pre-flight PASS" : preflightData ? "Pre-flight BLOCKED" : "Pre-flight —"}
+              </p>
+              {preflightData && (
+                <p className="text-[10px] text-slate-500">{passedChecks.length}/{(failedChecks.length + passedChecks.length)} checks passed</p>
+              )}
+            </div>
+          </div>
+          {overdueMilestones.length > 0 && (
+            <span className="ctms-badge-critical">{overdueMilestones.length} overdue milestone{overdueMilestones.length !== 1 ? "s" : ""}</span>
+          )}
+        </div>
       </div>
 
-      {/* COMPLIANCE PRE-FLIGHT CHECK PANEL */}
-      <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      {/* Pre-flight checklist */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
-              <CheckSquare className="w-4 h-4 text-teal-400" />
-              TRIAL ACTIVATION PRE-FLIGHT CHECKLIST
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Prerequisite verification required before moving study status to 'Recruiting'.
-            </p>
+            <h2 className="text-sm font-semibold text-slate-800">Pre-flight Checklist</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">ICH-GCP compliance gate for trial activation</p>
           </div>
-
-          {preflightData && (
-            <span className={`px-3 py-1 rounded-full text-xs font-bold font-mono ${
-              preflightData.ready_for_activation
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-            }`}>
-              {preflightData.ready_for_activation ? "✓ READY FOR RECRUITMENT" : "✗ ACTIVATION BLOCKED"}
-            </span>
-          )}
+          {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-400" />}
         </div>
 
-        {loading ? (
-          <p className="text-center text-slate-400 font-mono text-xs py-4 animate-pulse">Running pre-flight checks...</p>
-        ) : preflightData ? (
-          <div className="space-y-4">
-            {!preflightData.ready_for_activation && (
-              <div className="p-4 rounded-lg bg-rose-950/20 border border-rose-800/40 text-xs flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-rose-400 mt-0.5" />
-                <div>
-                  <h4 className="font-bold text-rose-300">TRIAL ACTIVATION BLOCKED</h4>
-                  <p className="text-slate-300 mt-0.5">{preflightData.block_reason}</p>
-                </div>
-              </div>
-            )}
-
-            {preflightData.ready_for_activation && (
-              <div className="p-4 rounded-lg bg-emerald-950/20 border border-emerald-800/40 text-xs flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5" />
-                <div>
-                  <h4 className="font-bold text-emerald-300">ALL CHECKS PASSED — ELIGIBLE FOR ACTIVATION</h4>
-                  <p className="text-slate-300 mt-0.5">Study {preflightData.protocol_number} has met all prerequisite conditions for participant recruitment.</p>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {preflightData.checklist.map((item: any) => (
-                <div
-                  key={item.key}
-                  className={`p-3.5 rounded-lg border text-xs ${
-                    item.passed ? "bg-slate-950 border-slate-800" : "bg-rose-950/20 border-rose-800/40"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2.5">
-                      {item.passed ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-rose-400 mt-0.5 shrink-0" />
-                      )}
-                      <div>
-                        <h4 className={`font-bold ${item.passed ? "text-slate-200" : "text-rose-300"}`}>{item.title}</h4>
-                        <p className="text-slate-400 text-[11px] mt-0.5">{item.details}</p>
-                      </div>
+        {loading && !preflightData ? (
+          <div className="px-4 py-8 text-center text-slate-400 text-sm flex justify-center items-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" /> Loading preflight data…
+          </div>
+        ) : !preflightData ? (
+          <div className="px-4 py-8 text-center text-slate-400 text-sm italic">No preflight data available for selected study.</div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {/* Failed first */}
+            {failedChecks.map((item: any) => (
+              <div key={item.key} className={`px-4 py-3.5 border-l-2 flex items-start justify-between gap-4 ${
+                item.severity === "CRITICAL" ? "border-l-red-500 bg-red-50/60" : "border-l-amber-400 bg-amber-50/40"
+              }`}>
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <AlertTriangle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${item.severity === "CRITICAL" ? "text-red-600" : "text-amber-600"}`} />
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-xs font-semibold text-slate-800">{item.description}</p>
+                    {item.evidence && <p className="text-[11px] text-slate-500 leading-snug">{item.evidence}</p>}
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`ctms-badge-${item.severity === "CRITICAL" ? "critical" : "warning"}`}>{item.severity}</span>
+                      {item.regulation && <span className="ctms-badge-neutral text-[10px]">{item.regulation}</span>}
                     </div>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                      item.passed ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
-                    }`}>
-                      {item.passed ? "PASSED" : "MISSING"}
-                    </span>
                   </div>
-
-                  {/* Resolve action for failed milestone-based items */}
-                  {!item.passed && item.milestone_id && (
-                    <div className="mt-3 pt-3 border-t border-rose-800/30">
-                      {resolveSuccess === item.key ? (
-                        <div className="flex items-center gap-2 text-emerald-400 text-[11px] font-bold">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Milestone marked complete — pre-flight updated!
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleResolveMilestone(item)}
-                          disabled={resolvingKey === item.key}
-                          className="px-3 py-1.5 rounded bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 text-[11px] font-bold border border-teal-500/30 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                        >
-                          <Wrench className="w-3 h-3" />
-                          {resolvingKey === item.key ? "Resolving..." : `Resolve: Mark '${item.title}' Complete`}
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
+                <div className="flex-shrink-0">
+                  {resolveOk.has(item.key) ? (
+                    <span className="flex items-center gap-1 text-[11px] text-green-700 font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Resolved
+                    </span>
+                  ) : canResolve && item.milestone_id ? (
+                    <button
+                      onClick={() => handleResolveMilestone(item)}
+                      disabled={resolvingKey === item.key}
+                      className="ctms-btn-secondary text-[11px] py-1 px-2.5"
+                      aria-label={`Resolve: ${item.description}`}
+                    >
+                      <Wrench className="w-3 h-3" /> {resolvingKey === item.key ? "Resolving…" : "Resolve"}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+            {/* Passed */}
+            {passedChecks.map((item: any) => (
+              <div key={item.key} className="px-4 py-3 border-l-2 border-l-green-500 flex items-center gap-3 opacity-75">
+                <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-slate-700">{item.description}</p>
+                </div>
+                <span className="ctms-badge-success text-[10px]">Pass</span>
+              </div>
+            ))}
           </div>
-        ) : null}
+        )}
       </div>
 
-      {/* HUMAN-IN-THE-LOOP TERMINOLOGY ASSISTANT */}
-      <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
-        <div className="border-b border-slate-800 pb-3">
-          <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
-            <Search className="w-4 h-4 text-teal-400" />
-            CLINICAL TERMINOLOGY MAPPING ASSISTANT (Prototype Human-in-the-Loop)
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Demonstrates alignment of indigenous Ayurvedic clinical terms with regulatory dictionary codes (prototype lookup table; not live MedDRA/WHODrug API).
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="space-y-3">
-            <label className="block text-xs font-semibold text-slate-300">Enter Ayurvedic Clinical Term:</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={ayurvedaTerm}
-                onChange={(e) => setAyurvedaTerm(e.target.value)}
-                placeholder="e.g. Aruchi, Kasa, Jwara"
-                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:border-teal-500"
-              />
-              <button
-                onClick={() => handleSuggestTerminology()}
-                disabled={termLoading}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-teal-600 hover:bg-teal-500 text-white"
-              >
-                Map
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              <span className="text-[10px] text-slate-500 font-semibold uppercase mr-1">Quick Sample:</span>
-              {["Aruchi", "Kasa", "Jwara", "Shwasa", "Sandhigata Vata", "Yakrit Roga"].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setAyurvedaTerm(t); handleSuggestTerminology(t); }}
-                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-mono border border-slate-700"
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+      {/* Milestone timeline */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Portfolio Milestone Schedule</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">Overdue → Upcoming · Drawn from all portfolio studies</p>
           </div>
-
-          {termResult && (
-            <div className="lg:col-span-2 p-4 rounded-lg bg-slate-950 border border-slate-800 space-y-3 text-xs">
-              <div className="flex justify-between items-start border-b border-slate-800 pb-2">
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold">Input Concept:</span>
-                  <h4 className="font-bold text-sm text-teal-300">{termResult.input_term}</h4>
+          <div className="flex gap-2">
+            {overdueMilestones.length > 0 && <span className="ctms-badge-critical">{overdueMilestones.length} overdue</span>}
+            {upcomingMilestones.length > 0 && <span className="ctms-badge-warning">{upcomingMilestones.length} upcoming</span>}
+          </div>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {[...overdueMilestones, ...upcomingMilestones].slice(0, 15).map((m: any, i: number) => {
+            const status = milestoneStatus(m, today);
+            const isOverdue = status === "overdue";
+            const isSoon    = status === "soon";
+            return (
+              <div key={i} className={`px-4 py-3 border-l-2 flex items-center justify-between gap-4 ${
+                isOverdue ? "border-l-red-500 bg-red-50/40" : isSoon ? "border-l-amber-400" : "border-l-slate-200"
+              }`}>
+                <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                  {isOverdue ? <AlertTriangle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" /> :
+                   isSoon    ? <Clock className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" /> :
+                               <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />}
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-slate-800 truncate">{m.name}</p>
+                    <p className="text-[10px] text-slate-500 font-mono">{m.planned_date}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold">Match Confidence:</span>
-                  <p className="font-extrabold text-emerald-400 text-sm">{termResult.confidence_percentage}%</p>
+                <div>
+                  {isOverdue ? <span className="ctms-badge-critical">Overdue</span> :
+                   isSoon    ? <span className="ctms-badge-warning">Due soon</span> :
+                               <span className="ctms-badge-neutral">Upcoming</span>}
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-[10px] text-slate-500 font-semibold uppercase">Suggested Clinical Interpretation:</p>
-                  <p className="font-bold text-slate-100 mt-0.5">{termResult.suggested_interpretation}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-500 font-semibold uppercase">Standardized Code (MedDRA / SNOMED):</p>
-                  <p className="font-bold text-slate-100 font-mono text-[11px] mt-0.5">{termResult.standardized_code}</p>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-                <span className="text-[10px] text-slate-400 italic">Human-in-the-loop: Investigator approval required before regulatory export.</span>
-                <div className="flex gap-2">
-                  <button className="px-3 py-1 rounded bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold">
-                    [Accept Coding]
-                  </button>
-                  <button className="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700">
-                    [Review Alternatives]
-                  </button>
-                </div>
-              </div>
+            );
+          })}
+          {milestonesAll.length === 0 && (
+            <div className="px-4 py-8 text-center text-slate-400 text-sm flex flex-col items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-500" /> No upcoming milestone deadlines
             </div>
           )}
         </div>
       </div>
 
-      {/* Interoperability Modal */}
-      {interopData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="glass-panel w-full max-w-3xl rounded-xl border border-slate-700 p-6 space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Code className="w-5 h-5 text-teal-400" />
-                {interopTitle}
-              </h3>
-              <button onClick={() => setInteropData(null)} className="text-slate-400 hover:text-slate-200">
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
-            <pre className="p-4 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-teal-300 overflow-x-auto max-h-96">
-              {JSON.stringify(interopData, null, 2)}
-            </pre>
-            <div className="flex justify-end pt-3 border-t border-slate-800">
-              <button onClick={() => setInteropData(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold">
-                Close Preview
-              </button>
-            </div>
-          </div>
+      {/* Terminology mapping assistant */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <h2 className="text-sm font-semibold text-slate-800">Ayurvedic Terminology Mapping</h2>
+          <p className="text-[11px] text-slate-400 mt-0.5">Maps Ayurvedic clinical concepts to MedDRA / WHO-ART equivalents for regulatory submissions</p>
         </div>
-      )}
+        <div className="px-4 py-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={ayurvedaTerm}
+              onChange={e => setAyurvedaTerm(e.target.value)}
+              placeholder="Enter Ayurvedic term…"
+              className="ctms-input max-w-xs"
+              aria-label="Ayurvedic term"
+              onKeyDown={e => e.key === "Enter" && handleSuggestTerminology()}
+            />
+            <button onClick={() => handleSuggestTerminology()} disabled={termLoading} className="ctms-btn-primary">
+              {termLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+              Map Term
+            </button>
+          </div>
+          {termResult && (
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded space-y-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="ctms-section-title mb-1">Ayurvedic Input</p>
+                  <p className="font-semibold text-slate-800">{termResult.ayurveda_term}</p>
+                  {termResult.classical_definition && <p className="text-[11px] text-slate-500 italic mt-0.5">{termResult.classical_definition}</p>}
+                </div>
+                <div>
+                  <p className="ctms-section-title mb-1">MedDRA Preferred Term</p>
+                  <p className="font-semibold text-slate-800">{termResult.meddra_preferred_term || "Not mapped"}</p>
+                  {termResult.meddra_soc && <p className="text-[11px] text-slate-500 mt-0.5">SOC: {termResult.meddra_soc}</p>}
+                </div>
+              </div>
+              {termResult.mapping_note && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-800">
+                  <p className="font-semibold mb-0.5">Mapping Note</p>
+                  <p>{termResult.mapping_note}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {interopData && <InteropModal data={interopData} title={interopTitle} onClose={() => setInteropData(null)} />}
     </div>
   );
 };

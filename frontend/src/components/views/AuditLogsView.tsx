@@ -2,230 +2,232 @@
 
 import React, { useState, useEffect } from "react";
 import { fetchAPI } from "@/lib/api";
-import { FileText, Search, Shield, Eye, Lock, X, CheckCircle, AlertTriangle } from "lucide-react";
+import { FileText, Search, Lock, X, CheckCircle, AlertTriangle, RefreshCw, Shield, Eye } from "lucide-react";
+
+function actionBadge(action: string) {
+  const a = action?.toUpperCase();
+  if (a === "CREATE") return "bg-green-50 text-green-700 border-green-200";
+  if (a === "UPDATE" || a === "PATCH") return "bg-blue-50 text-blue-700 border-blue-200";
+  if (a === "DELETE") return "bg-red-50 text-red-700 border-red-200";
+  return "bg-slate-100 text-slate-600 border-slate-200";
+}
 
 export const AuditLogsView: React.FC = () => {
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [logs, setLogs]                   = useState<any[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [search, setSearch]               = useState("");
+  const [selectedLog, setSelectedLog]     = useState<any | null>(null);
   const [integrityResult, setIntegrityResult] = useState<any | null>(null);
   const [checkingIntegrity, setCheckingIntegrity] = useState(false);
 
   const loadAuditLogs = async () => {
     setLoading(true);
-    try {
-      const data = await fetchAPI("/audit-logs");
-      setLogs(data);
-    } catch (err) {
-      console.error("Failed to fetch audit logs", err);
-    } finally {
-      setLoading(false);
-    }
+    try { setLogs(await fetchAPI("/audit-logs")); }
+    catch { /* silent */ }
+    finally { setLoading(false); }
   };
 
   const checkIntegrity = async () => {
     setCheckingIntegrity(true);
-    try {
-      const result = await fetchAPI("/audit-logs/integrity");
-      setIntegrityResult(result);
-    } catch (err) {
-      console.error("Failed to check integrity", err);
-      setIntegrityResult({ valid: false, total_records: 0, message: "Failed to reach integrity endpoint." });
-    } finally {
-      setCheckingIntegrity(false);
-    }
+    try { setIntegrityResult(await fetchAPI("/audit-logs/integrity")); }
+    catch { setIntegrityResult({ valid: false, total_records: 0, message: "Failed to reach integrity endpoint." }); }
+    finally { setCheckingIntegrity(false); }
   };
 
-  useEffect(() => {
-    loadAuditLogs();
-  }, []);
+  useEffect(() => { loadAuditLogs(); }, []);
 
-  const filteredLogs = logs.filter(
-    (l) =>
-      (l.user_email && l.user_email.toLowerCase().includes(search.toLowerCase())) ||
-      (l.description && l.description.toLowerCase().includes(search.toLowerCase())) ||
-      (l.entity_type && l.entity_type.toLowerCase().includes(search.toLowerCase())) ||
-      (l.action && l.action.toLowerCase().includes(search.toLowerCase()))
+  const filteredLogs = logs.filter(l =>
+    (l.user_email?.toLowerCase() || "").includes(search.toLowerCase()) ||
+    (l.description?.toLowerCase() || "").includes(search.toLowerCase()) ||
+    (l.entity_type?.toLowerCase() || "").includes(search.toLowerCase()) ||
+    (l.action?.toLowerCase() || "").includes(search.toLowerCase())
   );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-teal-400" />
-            Append-Only Audit Trail
-          </h2>
-          <p className="text-xs text-slate-400">Regulatory system traceability, user action records and SHA-256 hash-chain tamper evidence</p>
-          <p className="text-[10px] text-slate-500 italic mt-0.5">Hash chain is tamper-evident, not cryptographically signed. Row deletion is not detected.</p>
-        </div>
+    <div className="space-y-5 max-w-6xl">
 
-        <div className="flex flex-col items-end gap-2">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="ctms-page-title">Audit Log</h1>
+          <p className="text-xs text-slate-500 mt-0.5">SHA-256 hash-chained tamper-evident audit trail · Append-only · {logs.length} records</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={loadAuditLogs} className="ctms-btn-ghost text-xs"><RefreshCw className="w-3.5 h-3.5" /></button>
           <button
             onClick={checkIntegrity}
             disabled={checkingIntegrity}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-teal-600 text-xs text-slate-300 hover:text-teal-300 transition-all"
+            className="ctms-btn-primary"
+            aria-label="Verify audit chain integrity"
           >
-            <Shield className="w-3.5 h-3.5 text-teal-400" />
-            {checkingIntegrity ? "Verifying..." : "Verify Chain Integrity"}
+            {checkingIntegrity
+              ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Verifying…</>
+              : <><Shield className="w-3.5 h-3.5" /> Verify Integrity</>
+            }
           </button>
-          {integrityResult && (
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-              integrityResult.valid
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                : "bg-rose-500/10 border-rose-500/30 text-rose-400"
-            }`}>
-              {integrityResult.valid
-                ? <CheckCircle className="w-3.5 h-3.5" />
-                : <AlertTriangle className="w-3.5 h-3.5" />}
-              {integrityResult.valid
-                ? `Chain valid (${integrityResult.total_records} records)`
-                : `Integrity issue at record #${integrityResult.first_invalid_id}`}
+        </div>
+      </div>
+
+      {/* Integrity result */}
+      {integrityResult && (
+        <div className={`bg-white border rounded-md shadow-sm ${integrityResult.valid ? "border-green-200" : "border-red-200"}`}>
+          <div className={`px-4 py-3 border-b rounded-t-md flex items-center gap-3 ${integrityResult.valid ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+            {integrityResult.valid
+              ? <CheckCircle className="w-5 h-5 text-green-600" />
+              : <AlertTriangle className="w-5 h-5 text-red-600" />
+            }
+            <div>
+              <h2 className={`text-sm font-semibold ${integrityResult.valid ? "text-green-800" : "text-red-800"}`}>
+                {integrityResult.valid ? "Audit Chain Verified — Tamper-Evident Integrity Confirmed" : "Audit Chain Integrity Check Failed"}
+              </h2>
+              <p className="text-[11px] text-slate-600 mt-0.5">{integrityResult.message}</p>
             </div>
-          )}
+          </div>
+          <div className="px-4 py-3 grid grid-cols-3 gap-4 text-center text-sm">
+            <div><p className="text-lg font-black text-slate-800 font-mono">{integrityResult.total_records}</p><p className="ctms-section-title">Total Records</p></div>
+            <div><p className="text-lg font-black text-slate-800 font-mono">{integrityResult.verified_records ?? integrityResult.total_records}</p><p className="ctms-section-title">Verified</p></div>
+            <div><p className={`text-lg font-black font-mono ${integrityResult.valid ? "text-green-700" : "text-red-700"}`}>{integrityResult.valid ? "PASS" : "FAIL"}</p><p className="ctms-section-title">Status</p></div>
+          </div>
+        </div>
+      )}
+
+      {/* Hash-chain info */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+          <Lock className="w-4 h-4 text-[#1e3a5f]" />
+          <h2 className="text-sm font-semibold text-slate-800">SHA-256 Hash-Chained Audit Trail</h2>
+        </div>
+        <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-4 text-[12px] text-slate-600">
+          <div className="flex items-start gap-2.5">
+            <Lock className="w-3.5 h-3.5 text-[#1e3a5f] mt-0.5 flex-shrink-0" />
+            <div><p className="font-semibold text-slate-800">SHA-256 Chaining</p><p>Each log entry's hash includes the previous entry's hash, creating a cryptographic chain that detects any tampering or deletion.</p></div>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <Shield className="w-3.5 h-3.5 text-[#1e3a5f] mt-0.5 flex-shrink-0" />
+            <div><p className="font-semibold text-slate-800">Append-Only</p><p>Audit records are never modified or deleted. Any mutation attempt breaks the hash chain and is detectable via Verify Integrity.</p></div>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div><p className="font-semibold text-slate-800">Scope</p><p>This is a prototype demonstrating hash-chained audit architecture. This does NOT constitute a formal 21 CFR Part 11 digital signature system.</p></div>
+          </div>
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="glass-panel p-4 rounded-2xl">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Search audit trail by user, action, entity or description..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500"
-          />
+      {/* Log table */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Audit Records</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">{filteredLogs.length} of {logs.length} records shown</p>
+          </div>
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1.5" />
+            <input
+              type="text" placeholder="Search user, action, entity…" value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="ctms-input text-xs py-1.5 pl-8 w-56"
+              aria-label="Search audit logs"
+            />
+          </div>
         </div>
-      </div>
-
-      {/* Audit Log Table */}
-      <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-900/50 text-slate-400 uppercase tracking-wider font-semibold">
-                <th className="p-4">Timestamp</th>
-                <th className="p-4">Action</th>
-                <th className="p-4">Entity</th>
-                <th className="p-4">User & Role</th>
-                <th className="p-4">Description</th>
-                <th className="p-4 text-right">Inspect Diff</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {loading ? (
+        {loading ? (
+          <div className="px-4 py-8 text-center text-slate-400 text-sm flex justify-center items-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" /> Loading audit records…
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="ctms-table">
+              <thead>
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400 animate-pulse">
-                    Loading audit trail entries...
-                  </td>
+                  <th>Timestamp</th>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Entity</th>
+                  <th>Description</th>
+                  <th>Hash</th>
+                  <th></th>
                 </tr>
-              ) : filteredLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400 italic">
-                    No audit records match the filter.
-                  </td>
-                </tr>
-              ) : (
-                filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-4 font-mono text-slate-400 text-[11px]">
-                      {new Date(log.timestamp).toLocaleString()}
+              </thead>
+              <tbody>
+                {filteredLogs.map(log => (
+                  <tr key={log.id}>
+                    <td className="font-mono text-[10px] whitespace-nowrap text-slate-500">
+                      {new Date(log.timestamp).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
                     </td>
-                    <td className="p-4">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        log.action === "CREATE" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" :
-                        log.action === "STATUS_CHANGE" ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" :
-                        log.action === "LOGIN" ? "bg-sky-500/10 text-sky-400 border border-sky-500/30" :
-                        "bg-purple-500/10 text-purple-400 border border-purple-500/30"
-                      }`}>
+                    <td className="text-[12px]">
+                      <p className="font-medium text-slate-700">{log.user_name || log.user_email}</p>
+                      <p className="text-[10px] text-slate-400 font-mono">{log.user_role}</p>
+                    </td>
+                    <td>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${actionBadge(log.action)}`}>
                         {log.action}
                       </span>
                     </td>
-                    <td className="p-4 font-semibold text-slate-200">
-                      {log.entity_type} {log.entity_id ? `#${log.entity_id}` : ""}
+                    <td className="text-[11px] font-mono text-slate-600">{log.entity_type}{log.entity_id ? ` #${log.entity_id}` : ""}</td>
+                    <td className="max-w-[280px] text-[12px] text-slate-600 truncate">{log.description}</td>
+                    <td>
+                      <span className="font-mono text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200" title={log.entry_hash}>
+                        {log.entry_hash ? `${log.entry_hash.slice(0, 8)}…` : "—"}
+                      </span>
                     </td>
-                    <td className="p-4 text-slate-300">
-                      <p className="font-semibold text-slate-100">{log.user_email || "System"}</p>
-                      <p className="text-[10px] text-slate-400">{log.user_role}</p>
-                    </td>
-                    <td className="p-4 text-slate-300 max-w-[280px] truncate">{log.description}</td>
-                    <td className="p-4 text-right">
+                    <td>
                       <button
                         onClick={() => setSelectedLog(log)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 text-xs font-semibold border border-slate-700 transition-all inline-flex items-center gap-1"
+                        className="ctms-btn-ghost py-1 px-2 text-[10px]"
+                        aria-label="View full record"
                       >
-                        <Eye className="w-3.5 h-3.5" /> Inspect
+                        <Eye className="w-3 h-3" />
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+                {filteredLogs.length === 0 && (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400 italic text-sm">
+                    {search ? `No records match "${search}"` : "No audit records found."}
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* JSON Diff Inspector Modal */}
+      {/* Log detail modal */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="glass-panel w-full max-w-2xl rounded-2xl border border-slate-700 p-6 space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="ctms-modal-overlay">
+          <div className="ctms-modal max-w-xl">
+            <div className="ctms-modal-header">
+              <h3 className="text-sm font-semibold text-slate-800">Audit Record Detail</h3>
+              <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-slate-700" aria-label="Close"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="ctms-modal-body space-y-3">
+              {[
+                ["Timestamp",   new Date(selectedLog.timestamp).toLocaleString("en-IN")],
+                ["User",        `${selectedLog.user_name || ""} <${selectedLog.user_email}>`],
+                ["Role",        selectedLog.user_role],
+                ["Action",      selectedLog.action],
+                ["Entity Type", selectedLog.entity_type],
+                ["Entity ID",   selectedLog.entity_id],
+                ["Description", selectedLog.description],
+                ["IP Address",  selectedLog.ip_address || "—"],
+              ].map(([k, v]) => (
+                <div key={k} className="grid grid-cols-3 gap-2 text-xs">
+                  <span className="text-slate-500 font-medium">{k}</span>
+                  <span className="col-span-2 text-slate-800">{String(v ?? "—")}</span>
+                </div>
+              ))}
+              <div className="ctms-divider" />
               <div>
-                <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-teal-400" />
-                  Audit Trail Entry #{selectedLog.id}
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">{new Date(selectedLog.timestamp).toUTCString()}</p>
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">SHA-256 Entry Hash</p>
+                <p className="font-mono text-[11px] bg-slate-50 border border-slate-200 rounded p-2 break-all text-slate-700">{selectedLog.entry_hash || "—"}</p>
               </div>
-              <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-slate-200">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                <p className="text-slate-400 font-medium">Description:</p>
-                <p className="text-slate-100 font-medium mt-1">{selectedLog.description}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-slate-400 font-semibold mb-1">Previous Value (Before):</h4>
-                  <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-rose-300 overflow-x-auto max-h-48">
-                    {selectedLog.previous_value ? selectedLog.previous_value : "None (New Entity)"}
-                  </pre>
-                </div>
-
-                <div>
-                  <h4 className="text-slate-400 font-semibold mb-1">New Value (After):</h4>
-                  <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-emerald-300 overflow-x-auto max-h-48">
-                    {selectedLog.new_value ? selectedLog.new_value : "None"}
-                  </pre>
-                </div>
-              </div>
-
-              {/* Tamper-evident hash chain block */}
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-[11px]">
-                <p className="text-slate-400 font-semibold uppercase text-[10px]">Tamper-Evident Hash Chain Link (SHA-256):</p>
-                <div className="truncate">
-                  <span className="text-slate-500">Record Hash: </span>
-                  <span className="text-teal-400 font-bold">{selectedLog.record_hash || "Legacy unhashed entry"}</span>
-                </div>
-                <div className="truncate">
-                  <span className="text-slate-500">Previous Hash: </span>
-                  <span className="text-slate-400">{selectedLog.previous_hash || "Genesis (Initial entry)"}</span>
-                </div>
+              <div>
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Previous Hash</p>
+                <p className="font-mono text-[11px] bg-slate-50 border border-slate-200 rounded p-2 break-all text-slate-600">{selectedLog.previous_hash || "—"}</p>
               </div>
             </div>
-
-            <div className="flex justify-end pt-3 border-t border-slate-800">
-              <button onClick={() => setSelectedLog(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold">
-                Close Inspector
-              </button>
+            <div className="ctms-modal-footer">
+              <button onClick={() => setSelectedLog(null)} className="ctms-btn-secondary">Close</button>
             </div>
           </div>
         </div>

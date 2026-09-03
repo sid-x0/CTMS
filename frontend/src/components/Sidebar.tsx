@@ -5,156 +5,110 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useApp } from "@/context/AppContext";
 import {
-  LayoutDashboard,
-  FlaskConical,
-  Building2,
-  Users,
-  Flag,
-  FileText,
-  UserCog,
-  Bell,
-  ShieldAlert,
-  CheckSquare,
-  ShieldCheck,
-  Server,
-  Lock
+  Activity, LayoutDashboard, FlaskConical, Building2, Users,
+  Flag, FileText, UserCog, Bell, ShieldAlert, CheckSquare,
 } from "lucide-react";
 
-interface SidebarProps {
-  activeTab?: string;
-  setActiveTab?: (tab: string) => void;
-  alertCount?: number;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({
-  activeTab: propActiveTab,
-  setActiveTab: propSetActiveTab,
-  alertCount: propAlertCount,
-}) => {
+export const Sidebar: React.FC = () => {
   const { user } = useAuth();
   const pathname = usePathname();
   const { unreadAlertCount, navigateTab } = useApp();
   const isAdmin = user?.user_role === "Administrator";
 
-  const effectiveAlertCount = propAlertCount !== undefined ? propAlertCount : unreadAlertCount;
-
-  // Determine active tab from prop or current pathname
-  const currentTab = propActiveTab || (() => {
+  const currentTab = (() => {
     if (!pathname || pathname === "/" || pathname === "/dashboard") return "dashboard";
-    const segment = pathname.split("/")[1];
-    return segment || "dashboard";
+    return pathname.split("/")[1] || "dashboard";
   })();
 
   const navGroups = [
     {
-      groupTitle: "Executive & Governance",
+      groupTitle: "Overview",
       items: [
-        { id: "dashboard", label: "Executive Command", icon: LayoutDashboard },
-        { id: "studies", label: "Clinical Studies Portfolio", icon: FlaskConical },
-        { id: "alerts", label: "Operational Alerts", icon: Bell, badge: effectiveAlertCount, badgeColor: "rose" },
-      ]
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "alerts",    label: "Alerts",    icon: Bell, badge: unreadAlertCount },
+      ],
     },
     {
-      groupTitle: "Trial Operations & Sites",
+      groupTitle: "Clinical Research",
       items: [
-        { id: "sites", label: "Study Sites Governance", icon: Building2 },
-        { id: "participants", label: "Participants & Recruitment", icon: Users },
-        { id: "milestones", label: "Study Milestones & Timeline", icon: Flag },
-      ]
+        { id: "studies",      label: "Studies",      icon: FlaskConical },
+        { id: "sites",        label: "Sites",        icon: Building2 },
+        { id: "participants", label: "Participants",  icon: Users },
+        { id: "milestones",   label: "Milestones",   icon: Flag },
+      ],
     },
     {
-      groupTitle: "Safety & Regulatory Standards",
+      groupTitle: "Safety & Compliance",
       items: [
-        { id: "safety", label: "Pharmacovigilance (NPvCC)", icon: ShieldAlert, badgeText: "PV Core" },
-        { id: "compliance", label: "Compliance & Pre-Flight", icon: CheckSquare },
-        { id: "audit", label: "Append-Only Audit Trail", icon: FileText },
-      ]
+        { id: "safety",     label: "Safety",     icon: ShieldAlert },
+        { id: "compliance", label: "Compliance", icon: CheckSquare },
+      ],
     },
-    ...(isAdmin ? [{
-      groupTitle: "System Administration",
+    {
+      groupTitle: "Governance",
       items: [
-        { id: "users", label: "User Management & RBAC", icon: UserCog }
-      ]
-    }] : [])
+        { id: "audit", label: "Audit Log", icon: FileText },
+        ...(isAdmin ? [{ id: "users", label: "Users", icon: UserCog }] : []),
+      ],
+    },
   ];
 
-  const handleTabClick = (tabId: string) => {
-    if (propSetActiveTab) {
-      propSetActiveTab(tabId);
-    }
-    navigateTab(tabId);
-  };
-
   return (
-    <aside className="w-64 bg-slate-900/95 border-r border-slate-800 flex flex-col justify-between p-3 min-h-[calc(100vh-4rem)] select-none">
-      <div className="space-y-4">
-        {navGroups.map((group, gIdx) => (
-          <div key={gIdx} className="space-y-1">
-            <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-              <span>{group.groupTitle}</span>
-            </div>
-            {group.items.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabClick(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all group ${
-                    isActive
-                      ? "bg-slate-800 text-teal-300 border-l-4 border-teal-400 font-semibold shadow-sm"
-                      : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/60"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Icon className={`w-4 h-4 flex-shrink-0 transition-colors ${
-                      isActive ? "text-teal-400" : "text-slate-400 group-hover:text-slate-300"
-                    }`} />
-                    <span className="truncate">{item.label}</span>
-                  </div>
-
-                  {(item as any).badge && (item as any).badge > 0 ? (
-                    <span className="px-1.5 py-0.2 rounded-md text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                      {(item as any).badge}
-                    </span>
-                  ) : (item as any).badgeText ? (
-                    <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                      {(item as any).badgeText}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-        ))}
+    <aside className="w-52 bg-white border-r border-slate-200 flex flex-col min-h-screen flex-shrink-0">
+      {/* Brand */}
+      <div className="h-12 flex items-center gap-2.5 px-4 border-b border-slate-200">
+        <div className="w-6 h-6 bg-[#1e3a5f] rounded flex items-center justify-center flex-shrink-0">
+          <Activity className="w-3.5 h-3.5 text-white" />
+        </div>
+        <div>
+          <div className="text-sm font-bold text-[#0f172a] leading-none">AIIA CTMS</div>
+          <div className="text-[9px] text-slate-400 mt-0.5 leading-none">NPvCC · Ministry of Ayush</div>
+        </div>
       </div>
 
-      {/* Institutional Security & Governance Footer */}
-      <div className="pt-3 border-t border-slate-800/80 space-y-2">
-        <div className="p-2.5 rounded-lg bg-slate-950/90 border border-slate-800 text-[11px] text-slate-400 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-slate-200 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              AIIA Institutional CTMS
-            </span>
-            <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">
-              v2.4
-            </span>
+      {/* Nav */}
+      <nav className="flex-1 py-3 overflow-y-auto">
+        {navGroups.map(group => (
+          <div key={group.groupTitle} className="mb-4 px-2">
+            <div className="px-2 mb-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+              {group.groupTitle}
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map(item => {
+                const isActive = currentTab === item.id;
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => navigateTab(item.id)}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition-colors ${
+                      isActive
+                        ? "bg-blue-50 text-[#1e3a5f] font-semibold border-l-2 border-[#1e3a5f]"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-2 border-transparent"
+                    }`}
+                    aria-label={item.label}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? "text-[#1e3a5f]" : "text-slate-400"}`} />
+                      <span>{item.label}</span>
+                    </div>
+                    {(item as any).badge > 0 && (
+                      <span className="text-[10px] font-bold bg-red-100 text-red-700 px-1.5 rounded-full">
+                        {(item as any).badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <p className="text-[10px] text-slate-400 leading-tight">
-            National Pharmacovigilance Centre (NPvCC) • Ministry of Ayush
-          </p>
-          <div className="pt-1 mt-1 border-t border-slate-900 flex items-center justify-between text-[9px] text-slate-400 font-mono">
-            <span className="flex items-center gap-1">
-              <Lock className="w-2.5 h-2.5 text-teal-400" />
-              21 CFR Part 11
-            </span>
-            <span className="flex items-center gap-1 text-emerald-400">
-              <Server className="w-2.5 h-2.5" />
-              SECURE
-            </span>
-          </div>
-        </div>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="px-4 py-2.5 border-t border-slate-200">
+        <p className="text-[10px] text-slate-400 leading-relaxed">AIIA CTMS v2.4 · Prototype</p>
+        <p className="text-[9px] text-slate-300">Synthetic data · AIIA NPvCC</p>
       </div>
     </aside>
   );

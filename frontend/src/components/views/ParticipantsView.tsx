@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { StatusBadge } from "@/components/StatusBadge";
 import { fetchAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Users, Plus, ShieldCheck, ArrowRight, X, AlertCircle, FileCheck } from "lucide-react";
+import {
+  Users, Plus, ShieldCheck, ArrowRight, X, AlertCircle,
+  FileCheck, Search, RefreshCw, Lock,
+} from "lucide-react";
 
 interface ParticipantsViewProps {
   studies: any[];
@@ -13,33 +15,16 @@ interface ParticipantsViewProps {
   onRefresh: () => void;
 }
 
-const ConsentBadge: React.FC<{ status: string }> = ({ status }) => {
-  if (status === "OBTAINED") {
-    return (
-      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-        ICF Obtained
-      </span>
-    );
-  }
-  if (status === "WITHDRAWN") {
-    return (
-      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-        Consent Withdrawn
-      </span>
-    );
-  }
-  return (
-    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-      Consent Pending
-    </span>
-  );
-};
+function ConsentBadge({ status }: { status: string }) {
+  if (status === "OBTAINED")
+    return <span className="ctms-badge-success">ICF Obtained</span>;
+  if (status === "WITHDRAWN")
+    return <span className="ctms-badge-warning">Withdrawn</span>;
+  return <span className="ctms-badge-critical">Not Obtained</span>;
+}
 
 export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
-  studies,
-  selectedStudyId: propStudyId,
-  onSelectStudy,
-  onRefresh,
+  studies, selectedStudyId: propStudyId, onSelectStudy, onRefresh,
 }) => {
   const { user } = useAuth();
   const canModify =
@@ -47,33 +32,29 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
     user?.user_role === "Principal Investigator" ||
     user?.user_role === "Study Coordinator";
 
-  const [selectedStudyId, setSelectedStudyId] = useState<number>(
-    propStudyId || studies[0]?.id || 1
-  );
-  useEffect(() => {
-    if (propStudyId) setSelectedStudyId(propStudyId);
-  }, [propStudyId]);
+  const [selectedStudyId, setSelectedStudyId] = useState<number>(propStudyId || studies[0]?.id || 1);
+  useEffect(() => { if (propStudyId) setSelectedStudyId(propStudyId); }, [propStudyId]);
 
   const [participants, setParticipants] = useState<any[]>([]);
-  const [sites, setSites] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [sites, setSites]               = useState<any[]>([]);
+  const [loading, setLoading]           = useState(false);
+  const [search, setSearch]             = useState("");
 
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal]               = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<any | null>(null);
-  const [targetStatus, setTargetStatus] = useState<string>("");
-  const [transitionNotes, setTransitionNotes] = useState<string>("");
-  const [submitting, setSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [targetStatus, setTargetStatus]               = useState<string>("");
+  const [transitionNotes, setTransitionNotes]         = useState<string>("");
+  const [submitting, setSubmitting]                   = useState(false);
+  const [errorMsg, setErrorMsg]                       = useState("");
 
-  // Consent modal state
   const [consentParticipant, setConsentParticipant] = useState<any | null>(null);
-  const [consentStatus, setConsentStatus] = useState("OBTAINED");
-  const [consentVersion, setConsentVersion] = useState("ICF-v1.0");
-  const [consentNotes, setConsentNotes] = useState("");
+  const [consentStatus, setConsentStatus]           = useState("OBTAINED");
+  const [consentVersion, setConsentVersion]         = useState("ICF-v1.0");
+  const [consentNotes, setConsentNotes]             = useState("");
 
-  const [newCode, setNewCode] = useState("");
+  const [newCode, setNewCode]         = useState("");
   const [selectedSiteId, setSelectedSiteId] = useState<number>(0);
-  const [newNotes, setNewNotes] = useState("");
+  const [newNotes, setNewNotes]       = useState("");
 
   const loadData = async () => {
     if (!selectedStudyId) return;
@@ -86,377 +67,388 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
       setParticipants(pData);
       setSites(sData);
       if (sData.length > 0 && !selectedSiteId) setSelectedSiteId(sData[0].id);
-    } catch (err) {
-      console.error("Failed to load participants data", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch { /* silent */ }
+    finally { setLoading(false); }
   };
-
   useEffect(() => { loadData(); }, [selectedStudyId]);
 
   const handleAddParticipant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg("");
-    setSubmitting(true);
+    e.preventDefault(); setErrorMsg(""); setSubmitting(true);
     try {
       await fetchAPI(`/studies/${selectedStudyId}/participants`, {
         method: "POST",
         body: JSON.stringify({ study_id: selectedStudyId, site_id: selectedSiteId, participant_code: newCode, notes: newNotes }),
       });
-      setShowAddModal(false);
-      setNewCode("");
-      setNewNotes("");
-      loadData();
-      onRefresh();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to screen participant");
-    } finally {
-      setSubmitting(false);
-    }
+      setShowAddModal(false); setNewCode(""); setNewNotes("");
+      loadData(); onRefresh();
+    } catch (err: any) { setErrorMsg(err.message || "Failed to screen participant"); }
+    finally { setSubmitting(false); }
   };
 
   const handleConsentUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consentParticipant) return;
-    setErrorMsg("");
-    setSubmitting(true);
+    setErrorMsg(""); setSubmitting(true);
     try {
       await fetchAPI(`/participants/${consentParticipant.id}/consent`, {
         method: "PATCH",
-        body: JSON.stringify({
-          consent_status: consentStatus,
-          consent_version: consentVersion,
-          consent_date: new Date().toISOString().split("T")[0],
-          notes: consentNotes,
-        }),
+        body: JSON.stringify({ consent_status: consentStatus, consent_version: consentVersion, consent_date: new Date().toISOString().split("T")[0], notes: consentNotes }),
       });
-      setConsentParticipant(null);
-      setConsentNotes("");
+      setConsentParticipant(null); setConsentNotes("");
       loadData();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update consent");
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (err: any) { setErrorMsg(err.message || "Failed to update consent"); }
+    finally { setSubmitting(false); }
   };
 
   const handleStatusTransition = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedParticipant || !targetStatus) return;
-    setErrorMsg("");
-    setSubmitting(true);
+    setErrorMsg(""); setSubmitting(true);
     try {
       await fetchAPI(`/participants/${selectedParticipant.id}/status`, {
         method: "PATCH",
         body: JSON.stringify({ status: targetStatus, notes: transitionNotes }),
       });
-      setSelectedParticipant(null);
-      setTargetStatus("");
-      setTransitionNotes("");
-      loadData();
-      onRefresh();
-    } catch (err: any) {
-      setErrorMsg(err.message || "State transition failed");
-    } finally {
-      setSubmitting(false);
-    }
+      setSelectedParticipant(null); setTargetStatus(""); setTransitionNotes("");
+      loadData(); onRefresh();
+    } catch (err: any) { setErrorMsg(err.message || "State transition failed"); }
+    finally { setSubmitting(false); }
   };
 
   const getNextAllowedStates = (status: string) => {
     switch (status) {
-      case "Screened": return ["Eligible", "Screen Failure", "Withdrawn"];
-      case "Eligible": return ["Enrolled", "Withdrawn"];
-      case "Enrolled": return ["Randomized", "Completed", "Withdrawn"];
+      case "Screened":   return ["Eligible", "Screen Failure", "Withdrawn"];
+      case "Eligible":   return ["Enrolled", "Withdrawn"];
+      case "Enrolled":   return ["Randomized", "Completed", "Withdrawn"];
       case "Randomized": return ["Completed", "Withdrawn"];
-      default: return [];
+      default:           return [];
     }
   };
 
+  const enrolled      = participants.filter(p => ["Enrolled","Randomized","Completed"].includes(p.status)).length;
+  const pendingConsent = participants.filter(p => p.consent_status !== "OBTAINED").length;
+  const withdrawn     = participants.filter(p => p.status === "Withdrawn").length;
+  const consentGated  = participants.filter(p => p.consent_status !== "OBTAINED" && getNextAllowedStates(p.status).includes("Enrolled")).length;
+
+  const filtered = participants.filter(p =>
+    p.participant_code?.toLowerCase().includes(search.toLowerCase()) ||
+    sites.find(s => s.id === p.site_id)?.site_code?.toLowerCase().includes(search.toLowerCase()) ||
+    p.status?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const activeStudy = studies.find(s => s.id === selectedStudyId);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-7xl">
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-            <Users className="w-5 h-5 text-teal-400" />
-            Pseudonymous Participant Registry
-          </h2>
-          <p className="text-xs text-slate-400">
-            Strict pseudonymous recruitment tracking, informed consent control & workflow state machine
-          </p>
-          <p className="text-[10px] text-slate-500 mt-0.5 italic">
-            DPDP-aligned privacy-by-design controls demonstrated in prototype.
-          </p>
+          <h1 className="ctms-page-title">Participant Registry</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Pseudonymous identifiers · Informed consent control · State machine enrollment workflow</p>
+          <p className="text-[10px] text-slate-400 italic mt-0.5">DPDP-aligned privacy-by-design prototype · No real subject data</p>
         </div>
-        {canModify && (
-          <button
-            onClick={() => {
-              setSelectedSiteId(sites[0]?.id || 1);
-              setNewCode(`PT-${Date.now().toString().slice(-4)}`);
-              setShowAddModal(true);
-            }}
-            className="px-4 py-2 text-xs font-semibold rounded-lg bg-teal-600 hover:bg-teal-500 text-white shadow-sm transition-all flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Screen New Participant
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canModify && (
+            <button
+              onClick={() => { setSelectedSiteId(sites[0]?.id || 1); setNewCode(`PT-${Date.now().toString().slice(-4)}`); setShowAddModal(true); }}
+              className="ctms-btn-primary"
+              aria-label="Screen New Participant"
+            >
+              <Plus className="w-3.5 h-3.5" /> Screen Participant
+            </button>
+          )}
+          <button onClick={loadData} className="ctms-btn-ghost" aria-label="Refresh"><RefreshCw className="w-3.5 h-3.5" /></button>
+        </div>
       </div>
 
-      {/* Study Selector + Summary Pills */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <label className="text-xs font-semibold text-slate-300">Select Protocol:</label>
+      {/* Protocol selector + KPIs */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <label className="ctms-section-title whitespace-nowrap">Protocol</label>
           <select
             value={selectedStudyId}
-            onChange={(e) => setSelectedStudyId(parseInt(e.target.value))}
-            className="px-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:border-teal-500 flex-1 sm:w-80"
+            onChange={e => { const id = parseInt(e.target.value); setSelectedStudyId(id); onSelectStudy(id); }}
+            className="ctms-select text-xs py-1.5 max-w-xs"
+            aria-label="Select protocol"
           >
-            {studies.map((s) => (
-              <option key={s.id} value={s.id}>{s.protocol_number}: {s.short_title}</option>
-            ))}
+            {studies.map(s => <option key={s.id} value={s.id}>{s.protocol_number}: {s.short_title}</option>)}
           </select>
+          {activeStudy && <span className="ctms-badge-neutral text-[10px]">{activeStudy.status}</span>}
         </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300">
-            Total: <strong className="text-teal-400">{participants.length}</strong>
-          </span>
-          <span className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-            Enrolled: <strong>{participants.filter(p => ["Enrolled","Randomized","Completed"].includes(p.status)).length}</strong>
-          </span>
-          <span className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
-            Pending Consent: <strong>{participants.filter(p => p.consent_status === "NOT_OBTAINED").length}</strong>
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="ctms-kpi py-2 px-3">
+            <span className="text-sm font-black font-mono text-slate-800">{participants.length}</span>
+            <span className="text-[10px] text-slate-500 ml-1">total</span>
+          </div>
+          {enrolled > 0 && <div className="ctms-kpi py-2 px-3 border-green-200 bg-green-50">
+            <span className="text-sm font-black font-mono text-green-700">{enrolled}</span>
+            <span className="text-[10px] text-green-600 ml-1">enrolled</span>
+          </div>}
+          {pendingConsent > 0 && <div className="ctms-kpi py-2 px-3 border-red-200 bg-red-50">
+            <span className="text-sm font-black font-mono text-red-700">{pendingConsent}</span>
+            <span className="text-[10px] text-red-600 ml-1">consent pending</span>
+          </div>}
+          {withdrawn > 0 && <div className="ctms-kpi py-2 px-3 border-amber-200 bg-amber-50">
+            <span className="text-sm font-black font-mono text-amber-700">{withdrawn}</span>
+            <span className="text-[10px] text-amber-600 ml-1">withdrawn</span>
+          </div>}
         </div>
       </div>
 
-      {/* Participant List Table */}
-      <div className="rounded-xl border border-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-900 text-slate-400 uppercase tracking-wider font-semibold">
-                <th className="p-3">Pseudonym Code</th>
-                <th className="p-3">Site</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Informed Consent</th>
-                <th className="p-3">Screening Date</th>
-                <th className="p-3">Enrolment Date</th>
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 bg-slate-950">
-              {loading ? (
+      {/* Enrollment blocked callout */}
+      {consentGated > 0 && (
+        <div className="bg-red-50 border border-red-200 border-l-4 border-l-red-500 rounded-r-md px-4 py-3 flex items-start gap-3">
+          <Lock className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-semibold text-red-800">Enrollment Blocked — Informed Consent Required</p>
+            <p className="text-[11px] text-red-700 mt-0.5">
+              {consentGated} participant{consentGated !== 1 ? "s are" : " is"} eligible but consent is not yet obtained.
+              The backend enforces informed consent before enrollment proceeds. Use "Consent" to unblock.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Registry table */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Participant List</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">Pseudonymous identifiers only · {filtered.length} shown</p>
+          </div>
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1.5" />
+            <input
+              type="text" placeholder="Search code, site, status…" value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="ctms-input text-xs py-1.5 pl-8 w-52"
+              aria-label="Search participants"
+            />
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="px-4 py-10 text-center text-slate-400 text-sm flex justify-center items-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" /> Loading participant data…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="px-4 py-8 text-center text-slate-400 text-sm italic">
+            {search ? `No participants match "${search}"` : "No participants screened for this protocol."}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="ctms-table">
+              <thead>
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400 animate-pulse">Loading pseudonymous registry...</td>
+                  <th>Subject Code</th>
+                  <th>Site</th>
+                  <th>Status</th>
+                  <th>Consent</th>
+                  <th>Screened</th>
+                  <th>Enrolled</th>
+                  {canModify && <th className="text-right">Actions</th>}
                 </tr>
-              ) : participants.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400 italic">No participants screened yet for this protocol.</td>
-                </tr>
-              ) : participants.map((p) => {
-                const site = sites.find((s) => s.id === p.site_id);
-                const allowed = getNextAllowedStates(p.status);
-                return (
-                  <tr key={p.id} className="hover:bg-slate-900/60 transition-colors">
-                    <td className="p-3 font-bold text-teal-300 font-mono">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-                        {p.participant_code}
-                      </div>
-                    </td>
-                    <td className="p-3 text-slate-300">{site?.site_code || `Site #${p.site_id}`}</td>
-                    <td className="p-3"><StatusBadge status={p.status} /></td>
-                    <td className="p-3">
-                      <div className="flex flex-col gap-1">
-                        <ConsentBadge status={p.consent_status || "NOT_OBTAINED"} />
-                        {p.consent_version && <span className="text-[10px] text-slate-500 font-mono">{p.consent_version}</span>}
-                      </div>
-                    </td>
-                    <td className="p-3 text-slate-400">{p.screening_date || "-"}</td>
-                    <td className="p-3 text-slate-400">{p.enrollment_date || "-"}</td>
-                    <td className="p-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {canModify && p.consent_status !== "OBTAINED" && allowed.length > 0 && (
-                          <button
-                            onClick={() => { setConsentParticipant(p); setConsentStatus("OBTAINED"); setConsentVersion("ICF-v1.0"); setConsentNotes(""); setErrorMsg(""); }}
-                            className="px-2.5 py-1.5 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 text-xs font-semibold border border-amber-500/30 transition-all flex items-center gap-1"
-                          >
-                            <FileCheck className="w-3 h-3" /> Record Consent
-                          </button>
-                        )}
-                        {canModify && allowed.length > 0 ? (
-                          <button
-                            onClick={() => { setSelectedParticipant(p); setTargetStatus(allowed[0]); setTransitionNotes(""); setErrorMsg(""); }}
-                            className="px-2.5 py-1.5 rounded bg-teal-600/20 hover:bg-teal-600/40 text-teal-300 text-xs font-semibold border border-teal-500/40 transition-all flex items-center gap-1"
-                          >
-                            Update Status <ArrowRight className="w-3 h-3" />
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-slate-500 italic">Terminal</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map(p => {
+                  const site    = sites.find(s => s.id === p.site_id);
+                  const allowed = getNextAllowedStates(p.status);
+                  const enrollBlocked = allowed.includes("Enrolled") && p.consent_status !== "OBTAINED";
+
+                  return (
+                    <tr key={p.id} className={enrollBlocked ? "bg-red-50/40" : ""}>
+                      <td>
+                        <div className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-3 h-3 text-[#1e3a5f] flex-shrink-0" />
+                          <span className="font-mono text-xs font-semibold text-[#1e3a5f]">{p.participant_code}</span>
+                        </div>
+                      </td>
+                      <td className="font-mono text-[11px] text-slate-600">{site?.site_code || `S-${p.site_id}`}</td>
+                      <td>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${
+                          ["Enrolled","Randomized","Completed"].includes(p.status) ? "bg-green-50 text-green-700 border-green-200" :
+                          ["Withdrawn","Screen Failure"].includes(p.status) ? "bg-red-50 text-red-700 border-red-200" :
+                          p.status === "Eligible" ? "bg-slate-100 text-slate-700 border-slate-200" :
+                          "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}>{p.status}</span>
+                      </td>
+                      <td>
+                        <div className="space-y-0.5">
+                          <ConsentBadge status={p.consent_status || "NOT_OBTAINED"} />
+                          {p.consent_version && <p className="text-[9px] text-slate-400 font-mono">{p.consent_version}</p>}
+                        </div>
+                      </td>
+                      <td className="font-mono text-[11px] text-slate-500">{p.screening_date || "—"}</td>
+                      <td className="font-mono text-[11px] text-slate-500">{p.enrollment_date || "—"}</td>
+                      {canModify && (
+                        <td>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {enrollBlocked && (
+                              <span className="ctms-badge-critical text-[9px]"><Lock className="w-2.5 h-2.5 mr-0.5" />Blocked</span>
+                            )}
+                            {p.consent_status !== "OBTAINED" && allowed.length > 0 && (
+                              <button
+                                onClick={() => { setConsentParticipant(p); setConsentStatus("OBTAINED"); setConsentVersion("ICF-v1.0"); setConsentNotes(""); setErrorMsg(""); }}
+                                className="ctms-btn-warning text-[10px] py-1 px-2"
+                                aria-label={`Record consent for ${p.participant_code}`}
+                              >
+                                <FileCheck className="w-3 h-3" /> Consent
+                              </button>
+                            )}
+                            {allowed.length > 0 ? (
+                              <button
+                                onClick={() => { setSelectedParticipant(p); setTargetStatus(allowed[0]); setTransitionNotes(""); setErrorMsg(""); }}
+                                className="ctms-btn-secondary text-[10px] py-1 px-2"
+                                aria-label={`Update status for ${p.participant_code}`}
+                              >
+                                Status <ArrowRight className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 italic px-1">Terminal</span>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="px-4 py-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 bg-slate-50 rounded-b-md">
+          <span>{filtered.length} of {participants.length} subjects shown</span>
+          <span className="italic">Pseudonymous identifiers only · DPDP-aligned prototype</span>
         </div>
       </div>
 
       {/* Screen New Participant Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-slate-900 border border-slate-700 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-teal-400" />Screen Pseudonymous Subject
+        <div className="ctms-modal-overlay">
+          <div className="ctms-modal max-w-md">
+            <div className="ctms-modal-header">
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#1e3a5f]" /> Screen Pseudonymous Subject
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-700" aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
-            {errorMsg && <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">{errorMsg}</div>}
-            <form onSubmit={handleAddParticipant} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Assign Site *</label>
-                <select value={selectedSiteId} onChange={(e) => setSelectedSiteId(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-100">
-                  {sites.map((s) => <option key={s.id} value={s.id}>{s.site_code} - {s.site_name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Pseudonym Subject Code *</label>
-                <input type="text" required placeholder="e.g. PT-0001" value={newCode} onChange={(e) => setNewCode(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-100 font-mono" />
-              </div>
-              <div className="p-3 rounded-lg bg-amber-900/20 border border-amber-800/40 text-xs text-amber-300 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <span>Subject will be registered as <strong>Screened</strong> with consent <strong>NOT OBTAINED</strong>. Record consent separately before enrollment.</span>
-              </div>
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Screening Notes</label>
-                <textarea rows={2} placeholder="Inclusion/exclusion criteria met..." value={newNotes} onChange={(e) => setNewNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-100" />
-              </div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-slate-400">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-teal-600 text-white rounded-lg font-semibold">
-                  {submitting ? "Saving..." : "Register Subject"}
-                </button>
-              </div>
-            </form>
+            <div className="ctms-modal-body">
+              {errorMsg && <div className="p-3 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{errorMsg}</div>}
+              <form onSubmit={handleAddParticipant} className="space-y-3">
+                <div>
+                  <label className="ctms-label">Assign Site *</label>
+                  <select value={selectedSiteId} onChange={e => setSelectedSiteId(parseInt(e.target.value))} className="ctms-select">
+                    {sites.map(s => <option key={s.id} value={s.id}>{s.site_code} — {s.site_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="ctms-label">Pseudonym Subject Code *</label>
+                  <input type="text" required placeholder="e.g. PT-0001" value={newCode} onChange={e => setNewCode(e.target.value)} className="ctms-input font-mono" />
+                </div>
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-800 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>Subject registers as <strong>Screened</strong> with consent <strong>NOT OBTAINED</strong>. Record informed consent before enrollment can proceed.</span>
+                </div>
+                <div>
+                  <label className="ctms-label">Screening Notes</label>
+                  <textarea rows={2} placeholder="Inclusion/exclusion criteria…" value={newNotes} onChange={e => setNewNotes(e.target.value)} className="ctms-textarea" />
+                </div>
+                <div className="ctms-modal-footer -mx-5 -mb-4 mt-2 rounded-b-md">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="ctms-btn-ghost">Cancel</button>
+                  <button type="submit" disabled={submitting} className="ctms-btn-primary">{submitting ? "Saving…" : "Register Subject"}</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Consent Recording Modal */}
+      {/* Consent Modal */}
       {consentParticipant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-slate-900 border border-slate-700 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-amber-400" />Record Informed Consent
+        <div className="ctms-modal-overlay">
+          <div className="ctms-modal max-w-md">
+            <div className="ctms-modal-header">
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <FileCheck className="w-4 h-4 text-amber-600" /> Record Informed Consent
               </h3>
-              <button onClick={() => setConsentParticipant(null)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
+              <button onClick={() => setConsentParticipant(null)} className="text-slate-400 hover:text-slate-700" aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-300 flex justify-between">
-              <div>
-                <p className="text-slate-400">Subject:</p>
-                <p className="font-bold text-teal-300 font-mono">{consentParticipant.participant_code}</p>
+            <div className="ctms-modal-body">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded flex justify-between items-center">
+                <div><p className="ctms-section-title">Subject</p><p className="font-mono font-semibold text-[#1e3a5f] mt-0.5">{consentParticipant.participant_code}</p></div>
+                <div className="text-right"><p className="ctms-section-title">Current</p><div className="mt-0.5"><ConsentBadge status={consentParticipant.consent_status || "NOT_OBTAINED"} /></div></div>
               </div>
-              <div className="text-right">
-                <p className="text-slate-400">Current:</p>
-                <ConsentBadge status={consentParticipant.consent_status || "NOT_OBTAINED"} />
-              </div>
+              {errorMsg && <div className="p-3 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{errorMsg}</div>}
+              <form onSubmit={handleConsentUpdate} className="space-y-3">
+                <div>
+                  <label className="ctms-label">Consent Status *</label>
+                  <select value={consentStatus} onChange={e => setConsentStatus(e.target.value)} className="ctms-select">
+                    <option value="OBTAINED">OBTAINED — ICF signed and witnessed</option>
+                    <option value="WITHDRAWN">WITHDRAWN — Subject revoked consent</option>
+                    <option value="NOT_OBTAINED">NOT_OBTAINED — Consent pending</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="ctms-label">ICF Document Version</label>
+                  <input type="text" placeholder="e.g. ICF-v1.2" value={consentVersion} onChange={e => setConsentVersion(e.target.value)} className="ctms-input font-mono" />
+                </div>
+                <div>
+                  <label className="ctms-label">Notes for Audit Trail</label>
+                  <textarea rows={2} placeholder="Witness, date, reason for withdrawal…" value={consentNotes} onChange={e => setConsentNotes(e.target.value)} className="ctms-textarea" />
+                </div>
+                <div className="ctms-modal-footer -mx-5 -mb-4 mt-2 rounded-b-md">
+                  <button type="button" onClick={() => setConsentParticipant(null)} className="ctms-btn-ghost">Cancel</button>
+                  <button type="submit" disabled={submitting} className="ctms-btn-warning">{submitting ? "Saving…" : "Record Consent"}</button>
+                </div>
+              </form>
             </div>
-            {errorMsg && <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">{errorMsg}</div>}
-            <form onSubmit={handleConsentUpdate} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Consent Status *</label>
-                <select value={consentStatus} onChange={(e) => setConsentStatus(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-100">
-                  <option value="OBTAINED">OBTAINED — ICF signed and witnessed</option>
-                  <option value="WITHDRAWN">WITHDRAWN — Subject revoked consent</option>
-                  <option value="NOT_OBTAINED">NOT_OBTAINED — Consent pending</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">ICF Document Version</label>
-                <input type="text" placeholder="e.g. ICF-v1.2" value={consentVersion} onChange={(e) => setConsentVersion(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-100 font-mono" />
-              </div>
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Notes for Audit Trail</label>
-                <textarea rows={2} placeholder="Witness name, date, reason for withdrawal..." value={consentNotes}
-                  onChange={(e) => setConsentNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-100" />
-              </div>
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setConsentParticipant(null)} className="px-4 py-2 text-slate-400">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold">
-                  {submitting ? "Saving..." : "Record Consent"}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
 
       {/* Status Transition Modal */}
       {selectedParticipant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-slate-900 border border-slate-700 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <ArrowRight className="w-5 h-5 text-teal-400" />State Machine Transition
+        <div className="ctms-modal-overlay">
+          <div className="ctms-modal max-w-md">
+            <div className="ctms-modal-header">
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <ArrowRight className="w-4 h-4 text-[#1e3a5f]" /> Status Transition
               </h3>
-              <button onClick={() => setSelectedParticipant(null)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
+              <button onClick={() => setSelectedParticipant(null)} className="text-slate-400 hover:text-slate-700" aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-300 flex justify-between items-center">
-              <div>
-                <p className="text-slate-400">Subject Code:</p>
-                <p className="font-bold text-teal-300 font-mono text-sm">{selectedParticipant.participant_code}</p>
+            <div className="ctms-modal-body">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded flex justify-between items-center">
+                <div><p className="ctms-section-title">Subject Code</p><p className="font-mono font-semibold text-[#1e3a5f] mt-0.5">{selectedParticipant.participant_code}</p></div>
+                <span className="ctms-badge-neutral">{selectedParticipant.status}</span>
               </div>
-              <div className="text-right">
-                <p className="text-slate-400">Status:</p>
-                <StatusBadge status={selectedParticipant.status} />
-              </div>
-            </div>
-            {/* Consent warning before enrollment */}
-            {targetStatus === "Enrolled" && selectedParticipant.consent_status !== "OBTAINED" && (
-              <div className="p-3 rounded-lg bg-rose-950/30 border border-rose-800/50 text-xs text-rose-300 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold">Enrollment Will Be Rejected</p>
-                  <p>Informed consent is <strong>{selectedParticipant.consent_status || "NOT_OBTAINED"}</strong>. The backend enforces consent before enrollment. Record consent first.</p>
+              {targetStatus === "Enrolled" && selectedParticipant.consent_status !== "OBTAINED" && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-red-800">Enrollment Will Be Rejected</p>
+                    <p className="text-[11px] text-red-700 mt-0.5">Consent is <strong>{selectedParticipant.consent_status || "NOT_OBTAINED"}</strong>. The backend enforces consent before enrollment. Record consent first.</p>
+                  </div>
                 </div>
-              </div>
-            )}
-            {errorMsg && <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">{errorMsg}</div>}
-            <form onSubmit={handleStatusTransition} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Target Status *</label>
-                <select value={targetStatus} onChange={(e) => setTargetStatus(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-100 font-semibold">
-                  {getNextAllowedStates(selectedParticipant.status).map((st) => (
-                    <option key={st} value={st}>{st}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Clinical Justification / Notes</label>
-                <textarea rows={2} placeholder="Record justification for audit trail..." value={transitionNotes}
-                  onChange={(e) => setTransitionNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-100" />
-              </div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setSelectedParticipant(null)} className="px-4 py-2 text-slate-400">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-teal-600 text-white rounded-lg font-semibold">
-                  {submitting ? "Processing..." : "Confirm Transition"}
-                </button>
-              </div>
-            </form>
+              )}
+              {errorMsg && <div className="p-3 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{errorMsg}</div>}
+              <form onSubmit={handleStatusTransition} className="space-y-3">
+                <div>
+                  <label className="ctms-label">Target Status *</label>
+                  <select value={targetStatus} onChange={e => setTargetStatus(e.target.value)} className="ctms-select font-medium">
+                    {getNextAllowedStates(selectedParticipant.status).map(st => <option key={st} value={st}>{st}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="ctms-label">Clinical Justification / Notes</label>
+                  <textarea rows={2} placeholder="Record justification for audit trail…" value={transitionNotes} onChange={e => setTransitionNotes(e.target.value)} className="ctms-textarea" />
+                </div>
+                <div className="ctms-modal-footer -mx-5 -mb-4 mt-2 rounded-b-md">
+                  <button type="button" onClick={() => setSelectedParticipant(null)} className="ctms-btn-ghost">Cancel</button>
+                  <button type="submit" disabled={submitting} className="ctms-btn-primary">{submitting ? "Processing…" : "Confirm Transition"}</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

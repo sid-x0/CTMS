@@ -5,18 +5,14 @@ import { AppShell } from "@/components/AppShell";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AIIA CTMS - Clinical Trial Management System",
-  description: "Real-time Clinical Trial Management System for All India Institute of Ayurveda (AIIA)",
+  title: "AIIA CTMS – Clinical Trial Management System",
+  description: "Clinical Trial Management System for All India Institute of Ayurveda (AIIA), NPvCC",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-slate-950 text-slate-100 antialiased selection:bg-teal-500 selection:text-white">
+      <body className="bg-[#f4f6f8] text-slate-900 antialiased">
         <AuthProvider>
           <AppProvider>
             <AppShell>{children}</AppShell>
@@ -26,4 +22,3 @@ export default function RootLayout({
     </html>
   );
 }
-

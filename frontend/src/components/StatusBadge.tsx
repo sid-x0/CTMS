@@ -7,26 +7,35 @@ interface StatusBadgeProps {
   type?: "study" | "site" | "participant" | "milestone";
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = "study" }) => {
-  let badgeStyle = "bg-slate-800 text-slate-300 border-slate-700";
-
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   const lower = status.toLowerCase();
+  let cls = "bg-slate-100 text-slate-600 border-slate-200";
 
-  if (lower.includes("recruiting") || lower.includes("enrolled") || lower.includes("active")) {
-    badgeStyle = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+  if (lower.includes("recruiting") || lower.includes("active") || lower.includes("enrolled")) {
+    cls = "bg-green-50 text-green-700 border-green-200";
   } else if (lower.includes("completed")) {
-    badgeStyle = "bg-teal-500/10 text-teal-300 border-teal-500/30";
-  } else if (lower.includes("pending") || lower.includes("draft") || lower.includes("screened")) {
-    badgeStyle = "bg-amber-500/10 text-amber-400 border-amber-500/30";
-  } else if (lower.includes("overdue") || lower.includes("suspended") || lower.includes("withdrawn") || lower.includes("failure")) {
-    badgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/30";
-  } else if (lower.includes("ctri") || lower.includes("eligible") || lower.includes("randomized")) {
-    badgeStyle = "bg-sky-500/10 text-sky-400 border-sky-500/30";
+    cls = "bg-blue-50 text-blue-700 border-blue-200";
+  } else if (
+    lower.includes("pending") || lower.includes("draft") ||
+    lower.includes("screened") || lower.includes("in progress")
+  ) {
+    cls = "bg-amber-50 text-amber-700 border-amber-200";
+  } else if (
+    lower.includes("overdue") || lower.includes("suspended") ||
+    lower.includes("withdrawn") || lower.includes("failure") ||
+    lower.includes("screen failure")
+  ) {
+    cls = "bg-red-50 text-red-700 border-red-200";
+  } else if (lower.includes("eligible") || lower.includes("randomized") || lower.includes("ctri")) {
+    cls = "bg-slate-100 text-slate-700 border-slate-200";
+  } else if (lower.includes("reported") || lower.includes("under review")) {
+    cls = "bg-amber-50 text-amber-700 border-amber-200";
+  } else if (lower.includes("closed")) {
+    cls = "bg-slate-100 text-slate-500 border-slate-200";
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeStyle}`}>
-      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${cls}`}>
       {status}
     </span>
   );

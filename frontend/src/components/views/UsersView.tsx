@@ -2,7 +2,23 @@
 
 import React, { useState, useEffect } from "react";
 import { fetchAPI } from "@/lib/api";
-import { UserCog, Plus, Shield, CheckCircle2, X } from "lucide-react";
+import { UserCog, Plus, Shield, X, RefreshCw } from "lucide-react";
+
+const ROLES = [
+  "Administrator","Principal Investigator","Study Coordinator",
+  "Clinical Trial Monitor","Ethics Committee Member",
+  "Pharmacovigilance User","Regulator / Read-only User",
+];
+
+const ROLE_DESC: Record<string, string> = {
+  "Administrator": "Full access — system configuration and user management",
+  "Principal Investigator": "Protocol oversight, participant data, milestone management",
+  "Study Coordinator": "Operational trial tasks, participants, milestones",
+  "Clinical Trial Monitor": "Read access for monitoring; protocol data",
+  "Ethics Committee Member": "Ethics review access; read-only for most operational data",
+  "Pharmacovigilance User": "Safety event logging, signal review, pharmacovigilance",
+  "Regulator / Read-only User": "Read-only across all modules — no mutations permitted",
+};
 
 export const UsersView: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -12,190 +28,153 @@ export const UsersView: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState("");
 
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "Password123!",
-    role: "Study Coordinator",
-    organization: "All India Institute of Ayurveda"
+    name: "", email: "", password: "Password123!",
+    role: "Study Coordinator", organization: "All India Institute of Ayurveda",
   });
 
   const loadUsers = async () => {
     setLoading(true);
-    try {
-      const data = await fetchAPI("/users");
-      setUsers(data);
-    } catch (err) {
-      console.error("Failed to load users", err);
-    } finally {
-      setLoading(false);
-    }
+    try { setUsers(await fetchAPI("/users")); }
+    catch { /* silent */ }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  useEffect(() => { loadUsers(); }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg("");
-    setSubmitting(true);
-
+    e.preventDefault(); setErrorMsg(""); setSubmitting(true);
     try {
-      await fetchAPI("/users", {
-        method: "POST",
-        body: JSON.stringify(formData)
-      });
+      await fetchAPI("/users", { method: "POST", body: JSON.stringify(formData) });
       setShowAddModal(false);
       setFormData({ name: "", email: "", password: "Password123!", role: "Study Coordinator", organization: "All India Institute of Ayurveda" });
       loadUsers();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to create user");
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (err: any) { setErrorMsg(err.message || "Failed to create user"); }
+    finally { setSubmitting(false); }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-5xl">
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-            <UserCog className="w-5 h-5 text-teal-400" />
-            System User Administration
-          </h2>
-          <p className="text-xs text-slate-400">Governance and role assignment for researchers, coordinators, monitors and regulators</p>
+          <h1 className="ctms-page-title">User Administration</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Role-based access control · 7 institutional roles · JWT-authenticated</p>
         </div>
-
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 text-xs font-semibold rounded-xl bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-600/30 transition-all flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Provision New User
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={loadUsers} className="ctms-btn-ghost text-xs"><RefreshCw className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setShowAddModal(true)} className="ctms-btn-primary">
+            <Plus className="w-3.5 h-3.5" /> Provision User
+          </button>
+        </div>
       </div>
 
-      {/* Users Table */}
-      <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-900/50 text-slate-400 uppercase tracking-wider font-semibold">
-                <th className="p-4">Name</th>
-                <th className="p-4">Email</th>
-                <th className="p-4">Assigned Role</th>
-                <th className="p-4">Organization</th>
-                <th className="p-4">Account Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 animate-pulse">
-                    Loading registered system users...
-                  </td>
-                </tr>
-              ) : (
-                users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-4 font-bold text-slate-100">{u.name}</td>
-                    <td className="p-4 text-teal-300 font-mono">{u.email}</td>
-                    <td className="p-4">
-                      <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-teal-500/10 text-teal-300 border border-teal-500/30 flex items-center gap-1.5 w-fit">
-                        <Shield className="w-3 h-3 text-teal-400" />
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="p-4 text-slate-300">{u.organization}</td>
-                    <td className="p-4">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                        Active
-                      </span>
-                    </td>
-                  </tr>
-                ))
+      {/* Role reference */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <h2 className="text-sm font-semibold text-slate-800">Role Access Matrix</h2>
+          <p className="text-[11px] text-slate-400 mt-0.5">Backend RBAC is authoritative — frontend role switching issues real JWT sessions</p>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {ROLES.map(r => (
+            <div key={r} className="px-4 py-2.5 flex items-center gap-4">
+              <div className="w-6 h-6 rounded bg-[#1e3a5f]/10 flex items-center justify-center flex-shrink-0">
+                <Shield className="w-3.5 h-3.5 text-[#1e3a5f]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-slate-800">{r}</p>
+                <p className="text-[10px] text-slate-500">{ROLE_DESC[r]}</p>
+              </div>
+              {r === "Regulator / Read-only User" && (
+                <span className="ctms-badge-warning flex-shrink-0">Read-only</span>
               )}
-            </tbody>
-          </table>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Add User Modal */}
+      {/* Users table */}
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-800">Registered Users</h2>
+          <span className="ctms-badge-neutral">{users.length} users</span>
+        </div>
+        {loading ? (
+          <div className="px-4 py-8 text-center text-slate-400 text-sm flex justify-center items-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" /> Loading…
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="ctms-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Organization</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.id}>
+                    <td className="font-medium text-slate-800">{u.name}</td>
+                    <td className="font-mono text-[12px] text-[#1e3a5f]">{u.email}</td>
+                    <td>
+                      <span className="ctms-badge-info">{u.role}</span>
+                    </td>
+                    <td className="text-slate-600">{u.organization}</td>
+                    <td><span className="ctms-badge-success">Active</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Add user modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="glass-panel w-full max-w-md rounded-2xl border border-slate-700 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <UserCog className="w-5 h-5 text-teal-400" /> Provision System User
+        <div className="ctms-modal-overlay">
+          <div className="ctms-modal max-w-md">
+            <div className="ctms-modal-header">
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <UserCog className="w-4 h-4 text-[#1e3a5f]" /> Provision System User
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-200">
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-700" aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
-
-            {errorMsg && <div className="p-3 rounded-xl bg-rose-500/10 text-rose-300 text-xs">{errorMsg}</div>}
-
-            <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Dr. Mahendra Sharma"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Email Address *</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="user@aiia.gov.in"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Role *</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100"
-                >
-                  <option value="Administrator">Administrator</option>
-                  <option value="Principal Investigator">Principal Investigator</option>
-                  <option value="Study Coordinator">Study Coordinator</option>
-                  <option value="Clinical Trial Monitor">Clinical Trial Monitor</option>
-                  <option value="Ethics Committee Member">Ethics Committee Member</option>
-                  <option value="Pharmacovigilance User">Pharmacovigilance User</option>
-                  <option value="Regulator / Read-only User">Regulator / Read-only User</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Organization</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.organization}
-                  onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-slate-400">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-teal-600 text-white rounded-xl font-semibold">
-                  {submitting ? "Saving..." : "Create User"}
-                </button>
-              </div>
-            </form>
+            <div className="ctms-modal-body">
+              {errorMsg && <div className="p-3 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{errorMsg}</div>}
+              <form onSubmit={handleCreateUser} className="space-y-3">
+                <div>
+                  <label className="ctms-label">Full Name *</label>
+                  <input type="text" required placeholder="Dr. Mahendra Sharma" value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })} className="ctms-input" />
+                </div>
+                <div>
+                  <label className="ctms-label">Email Address *</label>
+                  <input type="email" required placeholder="user@aiia.gov.in" value={formData.email}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })} className="ctms-input" />
+                </div>
+                <div>
+                  <label className="ctms-label">Role *</label>
+                  <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="ctms-select">
+                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="ctms-label">Organization</label>
+                  <input type="text" required value={formData.organization}
+                    onChange={e => setFormData({ ...formData, organization: e.target.value })} className="ctms-input" />
+                </div>
+                <div className="ctms-modal-footer -mx-5 -mb-4 mt-2 rounded-b-md">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="ctms-btn-ghost">Cancel</button>
+                  <button type="submit" disabled={submitting} className="ctms-btn-primary">
+                    {submitting ? "Creating…" : "Create User"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
