@@ -115,11 +115,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
       {/* ── KPI STRIP ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { label: "Active Studies",      value: kpis.active_studies,      sub: `of ${kpis.total_studies} total` },
-          { label: "Total Enrolled",      value: kpis.total_enrolled,       sub: `of ${kpis.total_target} target` },
-          { label: "Recruitment",         value: `${kpis.overall_recruitment_pct ?? 0}%`, sub: "portfolio avg" },
-          { label: "Open SAEs",           value: kpis.open_safety_events ?? 0, sub: "under review", alert: (kpis.open_safety_events ?? 0) > 0 },
-          { label: "Overdue Milestones",  value: kpis.overdue_milestones ?? 0, sub: "need action", alert: (kpis.overdue_milestones ?? 0) > 0 },
+          {
+            label: "Active Studies",
+            value: kpis.active_studies ?? 0,
+            sub: `of ${kpis.total_studies ?? 0} total`
+          },
+          {
+            label: "Total Enrolled",
+            value: (kpis.total_enrolled ?? 0).toLocaleString(),
+            sub: `of ${(kpis.total_target_enrollment ?? kpis.total_target ?? 0).toLocaleString()} target`
+          },
+          {
+            label: "Recruitment",
+            value: `${kpis.overall_recruitment_percentage ?? kpis.overall_recruitment_pct ?? 0}%`,
+            sub: "portfolio avg"
+          },
+          {
+            label: "Open SAEs",
+            value: kpis.open_safety_events ?? 0,
+            sub: "under review",
+            alert: (kpis.open_safety_events ?? 0) > 0
+          },
+          {
+            label: "Overdue Milestones",
+            value: kpis.overdue_milestones_count ?? kpis.overdue_milestones ?? 0,
+            sub: "need action",
+            alert: (kpis.overdue_milestones_count ?? kpis.overdue_milestones ?? 0) > 0
+          },
         ].map(k => (
           <div key={k.label} className={`ctms-kpi ${k.alert ? "border-red-200 bg-red-50" : ""}`}>
             <div className={`ctms-kpi-value ${k.alert ? "text-red-700" : "text-[#0f172a]"}`}>{k.value}</div>

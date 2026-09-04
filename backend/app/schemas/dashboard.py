@@ -15,6 +15,8 @@ class PortfolioKPIs(BaseModel):
     open_actions_count: int
     overdue_milestones_count: int
     active_sites: int
+    open_safety_events: int = 0
+    total_safety_events: int = 0
 
 class PortfolioRiskCounts(BaseModel):
     CRITICAL: int

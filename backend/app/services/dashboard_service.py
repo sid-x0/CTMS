@@ -242,6 +242,11 @@ class DashboardService:
         # Build monthly cumulative enrollment based on start dates and current enrollment
         trajectory = self._compute_recruitment_trajectory(studies, today)
 
+        open_saes = sum(
+            1 for e in all_safety_events
+            if (e.seriousness or e.event_type == "SAE") and e.status == "Under Review"
+        )
+
         kpis = PortfolioKPIs(
             total_studies=total_studies,
             active_studies=sum(1 for s in studies if s.status in [StudyStatus.ACTIVE.value, StudyStatus.RECRUITING.value]),
@@ -251,7 +256,9 @@ class DashboardService:
             overall_recruitment_percentage=overall_pct,
             open_actions_count=len(attention_list),
             overdue_milestones_count=len(overdue_m),
-            active_sites=active_sites
+            active_sites=active_sites,
+            open_safety_events=open_saes,
+            total_safety_events=len(all_safety_events),
         )
 
         upcoming_outs = [StudyMilestoneOut.model_validate(m) for m in upcoming_m]
