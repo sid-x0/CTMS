@@ -189,6 +189,10 @@ class DashboardService:
             sites = [st for st in all_sites if st.study_id == s.id]
             milestones = [m for m in all_milestones_raw if m.study_id == s.id]
             s_safety = [e for e in all_safety_events if e.study_id == s.id]
+            s_open_saes = [
+                e for e in s_safety
+                if (e.seriousness or e.event_type == "SAE") and e.status == "Under Review"
+            ]
 
             risk = calculate_study_risk(s, sites, milestones, s_safety)
             risk_counts[risk.risk_level] += 1
@@ -213,7 +217,7 @@ class DashboardService:
                 recruitment_percentage=r_pct,
                 status=s.status,
                 risk=risk,
-                open_safety_events=len(s_safety),
+                open_safety_events=len(s_open_saes),
                 open_deviations=getattr(s, "protocol_deviations_count", 0) or 0,
                 next_deadline=next_dl,
                 sites_count=len(sites)
