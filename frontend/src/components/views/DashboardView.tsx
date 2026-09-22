@@ -48,6 +48,16 @@ function EnrollBar({ current, target, pct }: { current: number; target: number; 
   );
 }
 
+function riskFactors(risk: any) {
+  return [
+    { label: "Recruitment", value: risk?.recruitment_score ?? 0, max: 25 },
+    { label: "Compliance", value: risk?.compliance_score ?? 0, max: 35 },
+    { label: "Data quality", value: risk?.data_quality_score ?? 0, max: 20 },
+    { label: "Deviations", value: risk?.deviation_score ?? 0, max: 15 },
+    { label: "Safety", value: risk?.safety_score ?? 0, max: 15 },
+  ];
+}
+
 /* ── Main component ───────────────────────────────────────────────────────── */
 export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTab, loading, onRetry }) => {
   const router = useRouter();
@@ -57,9 +67,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
     setExpandedRisk(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const handleTriageAction = (item: any) => {
-    if (item.action_target === "safety")     router.push("/safety");
-    else if (item.action_target === "milestones") router.push("/milestones");
-    else if (item.action_target === "sites") router.push("/sites");
+    const scopedTarget = item.study_id ? `?studyId=${item.study_id}` : "";
+    if (item.action_target === "safety")     router.push(`/safety${scopedTarget}`);
+    else if (item.action_target === "milestones") router.push(`/milestones${scopedTarget}`);
+    else if (item.action_target === "sites") router.push(`/sites${scopedTarget}`);
     else if (item.study_id)                  router.push(`/studies/${item.study_id}`);
     else onNavigateTab(item.action_target);
   };
@@ -91,9 +102,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
     return (order[a.severity] ?? 3) - (order[b.severity] ?? 3);
   });
   const studiesWithSAE = (studies as any[]).filter(s => s.open_safety_events > 0);
+  const atRiskStudies = sortedStudies.filter(s => ["CRITICAL", "HIGH"].includes(s.risk?.risk_level));
+  const riskDistribution = data.risk_distribution ?? { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  const distributionTotal = kpis.total_studies || Object.values(riskDistribution).reduce((sum: number, value: any) => sum + Number(value || 0), 0) || 1;
+  const highestRiskStudy = sortedStudies[0];
+  const highestRiskAttention = highestRiskStudy
+    ? attnSorted.find((item: any) => item.study_id === highestRiskStudy.id)
+    : null;
+  const attentionByStudy = attnSorted.reduce<Record<number, number>>((counts, item: any) => {
+    counts[item.study_id] = (counts[item.study_id] ?? 0) + 1;
+    return counts;
+  }, {});
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-4 max-w-none">
 
       {/* ── PAGE HEADER ─────────────────────────────────────────────── */}
       <div>
@@ -113,7 +135,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
       </div>
 
       {/* ── KPI STRIP ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
         {[
           {
             label: "Active Studies",
@@ -142,8 +164,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
             sub: "need action",
             alert: (kpis.overdue_milestones_count ?? kpis.overdue_milestones ?? 0) > 0
           },
+          {
+            label: "At-risk Studies",
+            value: kpis.at_risk_studies_count ?? 0,
+            sub: "high or critical risk",
+            alert: (kpis.at_risk_studies_count ?? 0) > 0
+          },
         ].map(k => (
-          <div key={k.label} className={`ctms-kpi ${k.alert ? "border-red-200 bg-red-50" : ""}`}>
+          <div key={k.label} className={`ctms-kpi px-3 py-2.5 ${k.alert ? "border-red-200 bg-red-50" : ""}`}>
             <div className={`ctms-kpi-value ${k.alert ? "text-red-700" : "text-[#0f172a]"}`}>{k.value}</div>
             <div className="ctms-kpi-label">{k.label}</div>
             <div className="text-[10px] text-slate-400 mt-0.5">{k.sub}</div>
@@ -151,8 +179,97 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
         ))}
       </div>
 
+      {/* ── PORTFOLIO HEALTH HERO ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        <section className="bg-white border border-slate-200 rounded-md shadow-sm lg:col-span-4">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h2 className="text-sm font-semibold text-slate-800">Portfolio Risk Overview</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">Current deterministic operational risk distribution</p>
+          </div>
+          <div className="p-4 space-y-3">
+            <div className="h-2.5 w-full rounded-full overflow-hidden bg-slate-100 flex" aria-label="Portfolio risk distribution">
+              {[
+                ["CRITICAL", "bg-red-500"],
+                ["HIGH", "bg-amber-500"],
+                ["MEDIUM", "bg-blue-400"],
+                ["LOW", "bg-green-500"],
+              ].map(([level, color]) => (
+                <span key={level} className={color} style={{ width: `${(Number(riskDistribution[level] || 0) / distributionTotal) * 100}%` }} />
+              ))}
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                ["Critical", "CRITICAL", "text-red-700"],
+                ["High", "HIGH", "text-amber-700"],
+                ["Medium", "MEDIUM", "text-blue-700"],
+                ["Low", "LOW", "text-green-700"],
+              ].map(([label, key, color]) => (
+                <div key={key} className="min-w-0">
+                  <p className={`text-lg font-black font-mono leading-none ${color}`}>{riskDistribution[key] ?? 0}</p>
+                  <p className="text-[10px] text-slate-500 mt-1 truncate">{label}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400">{kpis.active_sites ?? 0} active sites · {kpis.open_actions_count ?? 0} open operational actions</p>
+          </div>
+        </section>
+
+        <section className="bg-white border border-slate-200 rounded-md shadow-sm lg:col-span-8">
+          <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">Why Is This Trial At Risk?</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">Explainable operational intelligence from current trial data</p>
+            </div>
+            {highestRiskStudy && (() => {
+              const rc = riskColors(highestRiskStudy.risk?.risk_level);
+              return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border whitespace-nowrap ${rc.badge}`}>{highestRiskStudy.risk?.risk_level} RISK</span>;
+            })()}
+          </div>
+          {highestRiskStudy ? (() => {
+            const rc = riskColors(highestRiskStudy.risk?.risk_level);
+            const recommendation = highestRiskStudy.risk?.recommended_actions?.[0];
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 px-4 py-3.5">
+                <div className="md:col-span-3 border-b md:border-b-0 md:border-r border-slate-100 pb-3 md:pb-0">
+                  <p className="font-mono text-[11px] font-semibold text-[#1e3a5f]">{highestRiskStudy.protocol_number}</p>
+                  <p className="text-xs font-medium text-slate-800 mt-1 leading-snug">{highestRiskStudy.short_title}</p>
+                  <div className="flex items-end gap-2 mt-3">
+                    <span className={`text-3xl font-black font-mono leading-none ${rc.score}`}>{highestRiskStudy.risk?.score ?? 0}</span>
+                    <span className="text-[10px] text-slate-400 mb-0.5">/ 100</span>
+                  </div>
+                  <button onClick={() => router.push(`/studies/${highestRiskStudy.id}`)} className="mt-3 text-[11px] font-semibold text-[#1e3a5f] hover:underline flex items-center gap-1">
+                    Open trial command center <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="md:col-span-4 space-y-2">
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Risk contribution</p>
+                  {riskFactors(highestRiskStudy.risk).map((factor) => (
+                    <div key={factor.label} className="grid grid-cols-[78px_1fr_34px] gap-2 items-center text-[10px]">
+                      <span className="text-slate-500 truncate">{factor.label}</span>
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${rc.bar}`} style={{ width: `${Math.min(100, factor.value / factor.max * 100)}%` }} />
+                      </div>
+                      <span className="font-mono text-right text-slate-600">{factor.value}/{factor.max}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="md:col-span-5 space-y-2">
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Evidence and recommended action</p>
+                  <p className="text-xs font-medium text-slate-800 leading-snug">{highestRiskStudy.risk?.primary_driver}</p>
+                  {highestRiskAttention?.issue && <p className="text-[10px] text-slate-500 leading-snug">{highestRiskAttention.issue}</p>}
+                  {recommendation && <p className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded px-2.5 py-2 leading-snug">{recommendation}</p>}
+                </div>
+              </div>
+            );
+          })() : (
+            <div className="px-4 py-8 text-center text-sm text-slate-400">No trial health data available.</div>
+          )}
+        </section>
+      </div>
+
       {/* ── NEEDS ATTENTION ─────────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-md shadow-sm">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm xl:col-span-8">
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Needs Attention</h2>
@@ -179,30 +296,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
             {attnSorted.map((item: any, idx: number) => {
               const sc = sevColors(item.severity);
               return (
-                <div key={idx} className={`px-4 py-3 border-l-2 ${sc.border} grid grid-cols-12 gap-3 items-start hover:bg-slate-50 transition-colors`}>
-                  <div className="col-span-1 pt-0.5">
+                <div key={idx} className={`px-3 py-2.5 border-l-2 ${sc.border} grid grid-cols-1 sm:grid-cols-12 gap-2 items-start hover:bg-slate-50 transition-colors`}>
+                  <div className="sm:col-span-1 pt-0.5">
                     <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold border ${sc.badge}`}>
                       {item.severity.slice(0, 4)}
                     </span>
                   </div>
-                  <div className="col-span-3">
+                  <div className="sm:col-span-3">
                     <p className="text-[11px] font-semibold text-slate-700">{item.study_protocol}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{item.study_name}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{item.study_title || `Study ${item.study_id}`}</p>
                   </div>
-                  <div className="col-span-4">
+                  <div className="sm:col-span-4">
                     <p className="text-xs font-medium text-slate-800">{item.title}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{item.evidence}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{item.issue}</p>
+                    <p className="text-[10px] text-slate-400 mt-1 font-mono">{item.metric_detail}</p>
                   </div>
-                  <div className="col-span-2 text-[10px] text-slate-500">
+                  <div className="sm:col-span-2 text-[10px] text-slate-500">
                     <p className="font-medium text-slate-600">{item.responsible_role}</p>
+                    {item.time_remaining && <p className="mt-1 text-slate-400">{item.time_remaining}</p>}
                   </div>
-                  <div className="col-span-2 flex justify-end">
+                  <div className="sm:col-span-2 flex sm:justify-end">
                     <button
                       onClick={() => handleTriageAction(item)}
                       className="ctms-btn-secondary text-[10px] py-1 px-2"
                       aria-label={`Act on: ${item.title}`}
                     >
-                      {item.recommended_action} <ChevronRight className="w-3 h-3" />
+                      {item.action_label} <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -210,6 +329,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
             })}
           </div>
         )}
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-md shadow-sm xl:col-span-4">
+        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Trial Health</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">Highest-risk protocols and primary drivers</p>
+          </div>
+          <span className="ctms-badge-warning">{atRiskStudies.length} at risk</span>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {(atRiskStudies.length ? atRiskStudies : sortedStudies.slice(0, 3)).slice(0, 4).map((study: any) => {
+            const rc = riskColors(study.risk?.risk_level);
+            return (
+              <button key={study.id} onClick={() => router.push(`/studies/${study.id}`)} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[11px] font-semibold text-[#1e3a5f]">{study.protocol_number}</span>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${rc.badge}`}>{study.risk?.score} · {study.risk?.risk_level}</span>
+                </div>
+                <p className="text-xs font-medium text-slate-800 mt-1 truncate">{study.short_title}</p>
+                <p className="text-[10px] text-slate-500 mt-1 leading-snug">{study.risk?.primary_driver}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
       </div>
 
       {/* ── PORTFOLIO TABLE ─────────────────────────────────────────── */}
@@ -234,6 +379,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
                 <th>Enrollment</th>
                 <th>Risk Score</th>
                 <th>Status</th>
+                <th>Operations</th>
                 <th></th>
               </tr>
             </thead>
@@ -249,7 +395,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
                       <p className="text-[10px] text-slate-400">{s.principal_investigator}</p>
                     </td>
                     <td><span className="ctms-badge-neutral">{s.phase}</span></td>
-                    <td className="text-slate-600">{s.site_count ?? "—"}</td>
+                    <td className="text-slate-600 font-medium">{s.sites_count ?? 0}</td>
                     <td className="min-w-[130px]">
                       <EnrollBar current={s.current_enrollment ?? 0} target={s.target_enrollment ?? 0} pct={s.recruitment_percentage ?? 0} />
                     </td>
@@ -260,16 +406,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
                           {s.risk?.risk_level}
                         </span>
                       </div>
-                      {/* factor bars */}
-                      {expandedRisk.has(s.id) && s.risk?.factors && (
+                      {expandedRisk.has(s.id) && (
                         <div className="mt-2 space-y-1 min-w-[160px]">
-                          {Object.entries(s.risk.factors).map(([k, v]: [string, any]) => (
-                            <div key={k} className="flex items-center gap-2 text-[10px]">
-                              <span className="w-20 truncate text-slate-500 capitalize">{k.replace(/_/g," ")}</span>
+                          {riskFactors(s.risk).map((factor) => (
+                            <div key={factor.label} className="flex items-center gap-2 text-[10px]">
+                              <span className="w-20 truncate text-slate-500">{factor.label}</span>
                               <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden">
-                                <div className={`h-full ${rc.bar} rounded-full`} style={{ width: `${Math.min(100, v)}%` }} />
+                                <div className={`h-full ${rc.bar} rounded-full`} style={{ width: `${Math.min(100, factor.value / factor.max * 100)}%` }} />
                               </div>
-                              <span className="w-5 text-right text-slate-600">{v}</span>
+                              <span className="w-8 text-right text-slate-600">{factor.value}/{factor.max}</span>
                             </div>
                           ))}
                         </div>
@@ -281,6 +426,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ data, onNavigateTa
                         s.status?.toLowerCase().includes("complet") ? "bg-blue-50 text-blue-700 border-blue-200" :
                         "bg-slate-100 text-slate-600 border-slate-200"
                       }`}>{s.status}</span>
+                    </td>
+                    <td className="min-w-[120px]">
+                      <div className="flex flex-wrap gap-1">
+                        {s.open_safety_events > 0 && <span className="ctms-badge-critical">{s.open_safety_events} SAE</span>}
+                        {(attentionByStudy[s.id] ?? 0) > 0 && <span className="ctms-badge-warning">{attentionByStudy[s.id]} action{attentionByStudy[s.id] === 1 ? "" : "s"}</span>}
+                        {s.open_safety_events === 0 && !(attentionByStudy[s.id] ?? 0) && <span className="text-[10px] text-slate-400">No open flags</span>}
+                      </div>
                     </td>
                     <td>
                       <div className="flex items-center gap-1">

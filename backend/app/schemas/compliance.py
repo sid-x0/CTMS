@@ -34,6 +34,7 @@ class AttentionItem(BaseModel):
     title: str
     issue: str
     study_protocol: str
+    study_title: str
     study_id: int
     metric_detail: str
     time_remaining: Optional[str] = None

@@ -5,14 +5,14 @@ import { fetchAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import {
   Users, Plus, ShieldCheck, ArrowRight, X, AlertCircle,
-  FileCheck, Search, RefreshCw, Lock,
+  FileCheck, Search, RefreshCw, Lock, CheckCircle2,
 } from "lucide-react";
 
 interface ParticipantsViewProps {
   studies: any[];
   selectedStudyId?: number;
   onSelectStudy: (id: number | undefined) => void;
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
 }
 
 function ConsentBadge({ status }: { status: string }) {
@@ -46,6 +46,8 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   const [transitionNotes, setTransitionNotes]         = useState<string>("");
   const [submitting, setSubmitting]                   = useState(false);
   const [errorMsg, setErrorMsg]                       = useState("");
+  const [workflowNotice, setWorkflowNotice]           = useState("");
+  const [enrollmentBlocked, setEnrollmentBlocked]     = useState(false);
 
   const [consentParticipant, setConsentParticipant] = useState<any | null>(null);
   const [consentStatus, setConsentStatus]           = useState("OBTAINED");
@@ -59,6 +61,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   const loadData = async () => {
     if (!selectedStudyId) return;
     setLoading(true);
+    setErrorMsg("");
     try {
       const [pData, sData] = await Promise.all([
         fetchAPI(`/studies/${selectedStudyId}/participants`),
@@ -67,20 +70,21 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
       setParticipants(pData);
       setSites(sData);
       if (sData.length > 0 && !selectedSiteId) setSelectedSiteId(sData[0].id);
-    } catch { /* silent */ }
+    } catch (err: any) { setErrorMsg(err.message || "Could not refresh participant data."); }
     finally { setLoading(false); }
   };
   useEffect(() => { loadData(); }, [selectedStudyId]);
 
   const handleAddParticipant = async (e: React.FormEvent) => {
-    e.preventDefault(); setErrorMsg(""); setSubmitting(true);
+    e.preventDefault(); setErrorMsg(""); setWorkflowNotice(""); setSubmitting(true);
     try {
       await fetchAPI(`/studies/${selectedStudyId}/participants`, {
         method: "POST",
         body: JSON.stringify({ study_id: selectedStudyId, site_id: selectedSiteId, participant_code: newCode, notes: newNotes }),
       });
       setShowAddModal(false); setNewCode(""); setNewNotes("");
-      loadData(); onRefresh();
+      await Promise.all([loadData(), onRefresh()]);
+      setWorkflowNotice(`Participant ${newCode} was screened with consent pending.`);
     } catch (err: any) { setErrorMsg(err.message || "Failed to screen participant"); }
     finally { setSubmitting(false); }
   };
@@ -88,14 +92,17 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   const handleConsentUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consentParticipant) return;
-    setErrorMsg(""); setSubmitting(true);
+    setErrorMsg(""); setWorkflowNotice(""); setSubmitting(true);
     try {
-      await fetchAPI(`/participants/${consentParticipant.id}/consent`, {
+      const updated = await fetchAPI(`/participants/${consentParticipant.id}/consent`, {
         method: "PATCH",
         body: JSON.stringify({ consent_status: consentStatus, consent_version: consentVersion, consent_date: new Date().toISOString().split("T")[0], notes: consentNotes }),
       });
       setConsentParticipant(null); setConsentNotes("");
-      loadData();
+      await loadData();
+      setWorkflowNotice(updated.consent_status === "OBTAINED"
+        ? `Informed consent recorded for ${updated.participant_code}. Enrollment is now available when the participant is Eligible.`
+        : `Consent status for ${updated.participant_code} was updated to ${updated.consent_status}.`);
     } catch (err: any) { setErrorMsg(err.message || "Failed to update consent"); }
     finally { setSubmitting(false); }
   };
@@ -103,15 +110,22 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   const handleStatusTransition = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedParticipant || !targetStatus) return;
-    setErrorMsg(""); setSubmitting(true);
+    setErrorMsg(""); setWorkflowNotice(""); setEnrollmentBlocked(false); setSubmitting(true);
     try {
-      await fetchAPI(`/participants/${selectedParticipant.id}/status`, {
+      const updated = await fetchAPI(`/participants/${selectedParticipant.id}/status`, {
         method: "PATCH",
         body: JSON.stringify({ status: targetStatus, notes: transitionNotes }),
       });
       setSelectedParticipant(null); setTargetStatus(""); setTransitionNotes("");
-      loadData(); onRefresh();
-    } catch (err: any) { setErrorMsg(err.message || "State transition failed"); }
+      await Promise.all([loadData(), onRefresh()]);
+      setWorkflowNotice(updated.status === "Enrolled"
+        ? `Enrollment successful: ${updated.participant_code} is now Enrolled. Participant and portfolio KPIs were refreshed.`
+        : `${updated.participant_code} transitioned to ${updated.status}.`);
+    } catch (err: any) {
+      const message = err.message || "State transition failed";
+      setEnrollmentBlocked(targetStatus === "Enrolled" && /enrollment blocked|consent_status/i.test(message));
+      setErrorMsg(message);
+    }
     finally { setSubmitting(false); }
   };
 
@@ -139,7 +153,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   const activeStudy = studies.find(s => s.id === selectedStudyId);
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-4 max-w-none">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -161,6 +175,9 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
           <button onClick={loadData} className="ctms-btn-ghost" aria-label="Refresh"><RefreshCw className="w-3.5 h-3.5" /></button>
         </div>
       </div>
+
+      {workflowNotice && <div className="p-3 rounded bg-green-50 border border-green-200 text-green-800 text-xs flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-600" />{workflowNotice}</div>}
+      {errorMsg && !selectedParticipant && !consentParticipant && !showAddModal && <div className="p-3 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{errorMsg}</div>}
 
       {/* Protocol selector + KPIs */}
       <div className="bg-white border border-slate-200 rounded-md shadow-sm px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -422,15 +439,15 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                 <div><p className="ctms-section-title">Subject Code</p><p className="font-mono font-semibold text-[#1e3a5f] mt-0.5">{selectedParticipant.participant_code}</p></div>
                 <span className="ctms-badge-neutral">{selectedParticipant.status}</span>
               </div>
-              {targetStatus === "Enrolled" && selectedParticipant.consent_status !== "OBTAINED" && (
+              {(targetStatus === "Enrolled" && selectedParticipant.consent_status !== "OBTAINED") || enrollmentBlocked ? (
                 <div className="p-3 bg-red-50 border border-red-200 rounded flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs font-semibold text-red-800">Enrollment Will Be Rejected</p>
-                    <p className="text-[11px] text-red-700 mt-0.5">Consent is <strong>{selectedParticipant.consent_status || "NOT_OBTAINED"}</strong>. The backend enforces consent before enrollment. Record consent first.</p>
+                    <p className="text-xs font-semibold text-red-800">ENROLLMENT BLOCKED</p>
+                    <p className="text-[11px] text-red-700 mt-0.5">Reason: informed consent has not been obtained. Required action: record informed consent before enrollment.</p>
                   </div>
                 </div>
-              )}
+              ) : null}
               {errorMsg && <div className="p-3 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{errorMsg}</div>}
               <form onSubmit={handleStatusTransition} className="space-y-3">
                 <div>

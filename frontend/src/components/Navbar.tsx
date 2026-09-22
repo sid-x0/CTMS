@@ -6,6 +6,7 @@ import { Shield, LogOut } from "lucide-react";
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
+  const isRegulator = user?.user_role === "Regulator / Read-only User";
   const [timeString, setTimeString] = useState<string>("");
 
   React.useEffect(() => {
@@ -25,9 +26,9 @@ export const Navbar: React.FC = () => {
 
       {/* Authenticated Role Persona Badge (Server Source of Truth) */}
       {user && (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-50 border border-slate-200 text-xs text-slate-700">
-          <Shield className="w-3.5 h-3.5 text-[#1e3a5f]" />
-          <span className="font-semibold text-slate-800">{user.user_role}</span>
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs ${isRegulator ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-slate-50 border-slate-200 text-slate-700"}`}>
+          <Shield className={`w-3.5 h-3.5 ${isRegulator ? "text-amber-700" : "text-[#1e3a5f]"}`} />
+          <span className="font-semibold">{isRegulator ? "REGULATOR · READ-ONLY OVERSIGHT" : user.user_role}</span>
         </div>
       )}
 

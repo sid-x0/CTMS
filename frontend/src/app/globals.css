@@ -59,13 +59,13 @@ body {
     @apply bg-slate-50 border-b border-slate-200;
   }
   .ctms-table thead th {
-    @apply px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap;
+    @apply px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap;
   }
   .ctms-table tbody tr {
     @apply border-b border-slate-100 hover:bg-slate-50 transition-colors duration-100;
   }
   .ctms-table tbody td {
-    @apply px-4 py-2.5 text-[13px] text-slate-700 align-middle;
+    @apply px-3 py-2 text-[13px] text-slate-700 align-middle;
   }
   .ctms-table tbody tr:last-child {
     @apply border-b-0;

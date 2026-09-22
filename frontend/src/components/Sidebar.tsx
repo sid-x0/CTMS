@@ -14,13 +14,14 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { unreadAlertCount, navigateTab } = useApp();
   const isAdmin = user?.user_role === "Administrator";
+  const isRegulator = user?.user_role === "Regulator / Read-only User";
 
   const currentTab = (() => {
     if (!pathname || pathname === "/" || pathname === "/dashboard") return "dashboard";
     return pathname.split("/")[1] || "dashboard";
   })();
 
-  const navGroups = [
+  const standardNavGroups = [
     {
       groupTitle: "Overview",
       items: [
@@ -52,6 +53,19 @@ export const Sidebar: React.FC = () => {
       ],
     },
   ];
+  const regulatorNavGroups = [
+    { groupTitle: "Oversight", items: [
+      { id: "dashboard", label: "Trial Status & Risk", icon: LayoutDashboard },
+      { id: "studies", label: "Studies", icon: FlaskConical },
+      { id: "alerts", label: "Alerts", icon: Bell, badge: unreadAlertCount },
+    ] },
+    { groupTitle: "Safety & Compliance", items: [
+      { id: "safety", label: "Safety", icon: ShieldAlert },
+      { id: "compliance", label: "Compliance", icon: CheckSquare },
+    ] },
+    { groupTitle: "Evidence", items: [{ id: "audit", label: "Audit Trail", icon: FileText }] },
+  ];
+  const navGroups = isRegulator ? regulatorNavGroups : standardNavGroups;
 
   return (
     <aside className="w-52 bg-white border-r border-slate-200 flex flex-col h-full flex-shrink-0 overflow-hidden">
@@ -67,14 +81,14 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Regulator Read-Only Badge */}
-      {user?.user_role === "Regulator / Read-only User" && (
-        <div className="mx-2 mt-2 px-2.5 py-1.5 rounded bg-amber-50 border border-amber-200 text-amber-800">
-          <p className="text-[10px] font-semibold flex items-center gap-1">
+      {isRegulator && (
+        <div className="mx-2 mt-2 px-2.5 py-2 rounded bg-amber-50 border border-amber-200 text-amber-800">
+          <p className="text-[10px] font-bold flex items-center gap-1 tracking-wide">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-            READ-ONLY MODE
+            REGULATOR OVERSIGHT
           </p>
-          <p className="text-[9px] text-amber-700 leading-tight mt-0.5">
-            Mutations strictly rejected by server
+          <p className="text-[9px] font-semibold text-amber-700 leading-tight mt-0.5">
+            READ-ONLY · trial status, safety, compliance & audit
           </p>
         </div>
       )}

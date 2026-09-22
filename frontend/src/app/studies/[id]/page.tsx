@@ -293,7 +293,7 @@ export default function StudyDetailPage() {
   const navTo = (path: string) => router.push(path);
 
   return (
-    <div className="space-y-4 pb-10 max-w-7xl">
+    <div className="space-y-4 pb-8 max-w-none">
 
       {/* ══════════════════════════════════════════════════════════════
           BREADCRUMB + BACK

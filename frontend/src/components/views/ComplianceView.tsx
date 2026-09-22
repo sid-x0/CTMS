@@ -12,7 +12,7 @@ interface ComplianceViewProps {
   studies: any[];
   selectedStudyId?: number;
   onSelectStudy: (id: number | undefined) => void;
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
 }
 
 function milestoneStatus(m: any, today: string) {
@@ -69,6 +69,8 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
   const [termLoading, setTermLoading]     = useState(false);
   const [interopData, setInteropData]     = useState<any | null>(null);
   const [interopTitle, setInteropTitle]   = useState("");
+  const [errorMsg, setErrorMsg]           = useState("");
+  const [successMsg, setSuccessMsg]       = useState("");
 
   useEffect(() => { if (selectedStudyId) setActiveStudyId(selectedStudyId); }, [selectedStudyId]);
 
@@ -76,6 +78,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
     const id = studyId ?? activeStudyId;
     if (!id) return;
     setLoading(true);
+    setErrorMsg("");
     try {
       const [pf, dashData] = await Promise.all([
         fetchAPI(`/compliance/studies/${id}/preflight`),
@@ -83,7 +86,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
       ]);
       setPreflightData(pf);
       if (dashData?.upcoming_deadlines) setMilestonesAll(dashData.upcoming_deadlines);
-    } catch { /* silent */ }
+    } catch (err: any) { setErrorMsg(err.message || "Could not refresh pre-flight readiness data."); }
     finally { setLoading(false); }
   };
 
@@ -95,7 +98,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
     setTermLoading(true);
     try {
       setTermResult(await fetchAPI("/compliance/terminology/suggest", { method: "POST", body: JSON.stringify({ ayurveda_term: term }) }));
-    } catch { /* silent */ }
+    } catch (err: any) { setErrorMsg(err.message || "Could not retrieve terminology mapping."); }
     finally { setTermLoading(false); }
   };
 
@@ -103,23 +106,24 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
 
   const handleExportFHIR = async () => {
     try { const d = await fetchAPI(`/compliance/studies/${activeStudyId}/fhir`); setInteropData(d); setInteropTitle("HL7 FHIR R4 ResearchStudy Resource — Architecture Roadmap Preview"); }
-    catch { /* silent */ }
+    catch (err: any) { setErrorMsg(err.message || "Could not generate the FHIR preview."); }
   };
   const handleExportCDISC = async () => {
     try { const d = await fetchAPI(`/compliance/studies/${activeStudyId}/cdisc`); setInteropData(d); setInteropTitle("CDISC SDTM Trial Summary Dataset — Architecture Roadmap Preview"); }
-    catch { /* silent */ }
+    catch (err: any) { setErrorMsg(err.message || "Could not generate the CDISC preview."); }
   };
 
   const handleResolveMilestone = async (item: any) => {
     if (!item.milestone_id) return;
     setResolvingKey(item.key);
+    setErrorMsg("");
+    setSuccessMsg("");
     try {
-      const updated = await fetchAPI(`/compliance/studies/${activeStudyId}/milestones/${item.milestone_id}/complete`, { method: "POST" });
-      setPreflightData(updated);
+      await fetchAPI(`/compliance/studies/${activeStudyId}/milestones/${item.milestone_id}/complete`, { method: "POST" });
+      await Promise.all([loadPreflight(activeStudyId), onRefresh()]);
       setResolveOk(prev => new Set(prev).add(item.key));
-      onRefresh();
-      setTimeout(() => setResolveOk(prev => { const n = new Set(prev); n.delete(item.key); return n; }), 4000);
-    } catch { /* silent */ }
+      setSuccessMsg(`${item.title} was completed. Pre-flight readiness was re-evaluated using the current backend state.`);
+    } catch (err: any) { setErrorMsg(err.message || "Could not resolve the linked milestone. Pre-flight state was not confirmed as updated."); }
     finally { setResolvingKey(null); }
   };
 
@@ -130,7 +134,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
   const upcomingMilestones = milestonesAll.filter(m => m.planned_date >= today);
 
   return (
-    <div className="space-y-5 max-w-6xl">
+    <div className="space-y-4 max-w-none">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -149,6 +153,9 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
           </button>
         </div>
       </div>
+
+      {successMsg && <div className="p-3 rounded bg-green-50 border border-green-200 text-green-800 text-xs flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-600" />{successMsg}</div>}
+      {errorMsg && <div className="p-3 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{errorMsg}</div>}
 
       {/* Study selector + summary */}
       <div className="bg-white border border-slate-200 rounded-md shadow-sm px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -171,7 +178,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
             }
             <div>
               <p className={`text-xs font-semibold ${preflightData?.ready_for_activation ? "text-green-700" : preflightData ? "text-amber-700" : "text-slate-600"}`}>
-                {preflightData?.ready_for_activation ? "Pre-flight PASS" : preflightData ? "Pre-flight BLOCKED" : "Pre-flight —"}
+                {preflightData?.ready_for_activation ? "READY FOR ACTIVATION" : preflightData ? "PRE-FLIGHT BLOCKED" : "Pre-flight —"}
               </p>
               {preflightData && (
                 <p className="text-[10px] text-slate-500">{passedChecks.length}/{(failedChecks.length + passedChecks.length)} checks passed</p>
@@ -189,7 +196,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Pre-flight Checklist</h2>
-            <p className="text-[11px] text-slate-400 mt-0.5">ICH-GCP compliance gate for trial activation</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Internal pre-flight readiness gate for trial activation</p>
           </div>
           {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-400" />}
         </div>
@@ -210,7 +217,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
                   <div className="min-w-0 space-y-1">
                     <p className="text-xs font-semibold text-slate-800">{item.title}</p>
                     {item.details && <p className="text-[11px] text-slate-500 leading-snug">{item.details}</p>}
-                    <span className="ctms-badge-warning">Attention Required</span>
+                    <span className="ctms-badge-warning">BLOCKED</span>
                   </div>
                 </div>
                 <div className="flex-shrink-0">
@@ -225,7 +232,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
                       className="ctms-btn-secondary text-[11px] py-1 px-2.5"
                       aria-label={`Resolve: ${item.title}`}
                     >
-                      <Wrench className="w-3 h-3" /> {resolvingKey === item.key ? "Resolving…" : "Resolve"}
+                      <Wrench className="w-3 h-3" /> {resolvingKey === item.key ? "Resolving…" : "Resolve milestone"}
                     </button>
                   ) : null}
                 </div>

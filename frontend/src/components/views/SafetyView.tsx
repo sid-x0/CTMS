@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { fetchAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -12,7 +13,7 @@ interface SafetyViewProps {
   studies: any[];
   selectedStudyId?: number;
   onSelectStudy: (id: number | undefined) => void;
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
 }
 
 function sevMeta(severity: string) {
@@ -119,6 +120,7 @@ function LogEventModal({ studies, onClose, onSuccess }: { studies: any[]; onClos
 
 export const SafetyView: React.FC<SafetyViewProps> = ({ studies, selectedStudyId, onSelectStudy, onRefresh }) => {
   const { user } = useAuth();
+  const router = useRouter();
   const canReport = user?.user_role === "Administrator" || user?.user_role === "Principal Investigator" || user?.user_role === "Pharmacovigilance User";
 
   const [filterStudyId, setFilterStudyId] = useState<string>(selectedStudyId ? String(selectedStudyId) : "");
@@ -129,27 +131,45 @@ export const SafetyView: React.FC<SafetyViewProps> = ({ studies, selectedStudyId
   const [showModal, setShowModal] = useState(false);
   const [reviewingId, setReviewingId] = useState<number | null>(null);
   const [reviewedIds, setReviewedIds] = useState<Set<number>>(new Set());
+  const [studyRisk, setStudyRisk] = useState<Record<number, any>>({});
+  const [errorMsg, setErrorMsg] = useState("");
+  const [reviewSuccess, setReviewSuccess] = useState<string>("");
 
   useEffect(() => { if (selectedStudyId) setFilterStudyId(String(selectedStudyId)); }, [selectedStudyId]);
 
   const loadData = async () => {
     setLoading(true);
+    setErrorMsg("");
     try {
       const url = filterStudyId ? `/safety?study_id=${filterStudyId}` : "/safety";
       const [evList, sigList] = await Promise.all([fetchAPI(url), fetchAPI("/safety/signals")]);
-      setSafetyEvents(evList); setSignals(sigList);
-    } catch { /* silent */ }
+      const studyIds = Array.from(new Set<number>(evList.map((event: any) => event.study_id)));
+      const riskResponses = await Promise.all(studyIds.map(async (studyId) => {
+        const dashboard = await fetchAPI(`/dashboard/studies/${studyId}`);
+        return [studyId, dashboard.risk] as const;
+      }));
+      setSafetyEvents(evList);
+      setSignals(sigList);
+      setStudyRisk(Object.fromEntries(riskResponses));
+    } catch (err: any) {
+      setErrorMsg(err.message || "Could not refresh safety and operational risk data.");
+    }
     finally { setLoading(false); }
   };
   useEffect(() => { loadData(); }, [filterStudyId]);
 
   const handleMarkReviewed = async (ev: any) => {
     setReviewingId(ev.id);
+    setErrorMsg("");
+    setReviewSuccess("");
     try {
       await fetchAPI(`/safety/${ev.id}/review`, { method: "PATCH", body: JSON.stringify({ status: "Reported to IEC/DCGI" }) });
       setReviewedIds(prev => new Set(prev).add(ev.id));
-      loadData(); onRefresh();
-    } catch { /* silent */ }
+      await Promise.all([loadData(), onRefresh()]);
+      setReviewSuccess(`${ev.event_term} was reviewed and reported. Safety status, explainable operational risk, and the dashboard have been refreshed.`);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Safety review failed. The event was not confirmed as updated.");
+    }
     finally { setReviewingId(null); }
   };
 
@@ -161,9 +181,10 @@ export const SafetyView: React.FC<SafetyViewProps> = ({ studies, selectedStudyId
     (e.participant_code?.toLowerCase() || "").includes(search.toLowerCase())
   );
   const openSAEs = safetyEvents.filter(e => (e.seriousness || e.event_type === "SAE") && e.status === "Under Review");
+  const safetyContribution = (studyId: number) => studyRisk[studyId]?.safety_score;
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-4 max-w-none">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -187,6 +208,14 @@ export const SafetyView: React.FC<SafetyViewProps> = ({ studies, selectedStudyId
           )}
         </div>
       </div>
+
+      {reviewSuccess && (
+        <div className="p-3 rounded bg-green-50 border border-green-200 text-green-800 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-600" />{reviewSuccess}</span>
+          <button onClick={() => router.push("/audit?entity=SafetyEvent")} className="text-[11px] font-semibold text-green-800 hover:underline whitespace-nowrap">View safety audit records →</button>
+        </div>
+      )}
+      {errorMsg && <div className="p-3 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{errorMsg}</div>}
 
       {/* Safety attention */}
       {urgentItems.length > 0 && (
@@ -218,6 +247,9 @@ export const SafetyView: React.FC<SafetyViewProps> = ({ studies, selectedStudyId
                       <span>Causality: {ev.causality}</span>
                       {dl && <span className={dl.cls}><Clock className="w-3 h-3 inline mr-0.5" />{dl.label}</span>}
                     </div>
+                    {ev.status === "Under Review" && safetyContribution(ev.study_id) !== undefined && (
+                      <p className="text-[10px] text-red-700 font-semibold mt-1.5">Current study safety contribution: +{safetyContribution(ev.study_id)} risk point{safetyContribution(ev.study_id) === 1 ? "" : "s"}</p>
+                    )}
                   </div>
                   <div className="flex flex-col items-start sm:items-end gap-1.5">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${statusBadge(ev.status)}`}>{ev.status}</span>
@@ -322,6 +354,7 @@ export const SafetyView: React.FC<SafetyViewProps> = ({ studies, selectedStudyId
                   <th>Subject</th>
                   <th>Severity / Causality</th>
                   <th>Deadline</th>
+                  <th>Risk Impact</th>
                   <th>Status</th>
                   {canReport && <th>Action</th>}
                 </tr>
@@ -343,6 +376,11 @@ export const SafetyView: React.FC<SafetyViewProps> = ({ studies, selectedStudyId
                         <span className="text-slate-400"> ({ev.causality})</span>
                       </td>
                       <td>{dl ? <span className={`text-[11px] font-mono ${dl.cls}`}>{dl.label}</span> : <span className="text-slate-400">—</span>}</td>
+                      <td>
+                        {ev.status === "Under Review" && safetyContribution(ev.study_id) !== undefined
+                          ? <span className="ctms-badge-warning">+{safetyContribution(ev.study_id)} points</span>
+                          : <span className="text-[10px] text-slate-400">No active contribution</span>}
+                      </td>
                       <td><span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${statusBadge(ev.status)}`}>{ev.status}</span></td>
                       {canReport && (
                         <td>
