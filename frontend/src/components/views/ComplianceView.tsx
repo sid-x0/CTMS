@@ -5,7 +5,7 @@ import { fetchAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import {
   CheckSquare, AlertTriangle, CheckCircle2, Clock,
-  RefreshCw, Code, XCircle, Wrench, Shield, Search,
+  RefreshCw, Code, XCircle, Wrench, Shield, Search, Download, FileJson, Table2,
 } from "lucide-react";
 
 interface ComplianceViewProps {
@@ -23,26 +23,106 @@ function milestoneStatus(m: any, today: string) {
   return "upcoming";
 }
 
-/* ── Interop modal (preserved logic) ────────────────────────────────────── */
-function InteropModal({ data, title, onClose }: { data: any; title: string; onClose: () => void }) {
+type StandardsPreviewKind = "fhir" | "cdisc";
+
+function csvCell(value: unknown) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function downloadPreview(filename: string, content: string, mimeType: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function fhirMappings(data: any): Array<[string, string, unknown]> {
+  return [
+    ["Study ID", "ResearchStudy.id", data.id],
+    ["Protocol number", "ResearchStudy.identifier[official].value", data.identifier?.[0]?.value],
+    ["Study title", "ResearchStudy.title", data.title],
+    ["Study status", "ResearchStudy.status", data.status],
+    ["Study type", "ResearchStudy.category[0].coding[0].code", data.category?.[0]?.coding?.[0]?.code],
+    ["Intervention type", "ResearchStudy.focus[0].text", data.focus?.[0]?.text],
+    ["Principal investigator", "ResearchStudy.principalInvestigator.display", data.principalInvestigator?.display],
+    ["Sponsor", "ResearchStudy.sponsor.display", data.sponsor?.display],
+    ["Target / actual enrollment", "ResearchStudy.enrollment[0].display", data.enrollment?.[0]?.display],
+    ["Study sites", "ResearchStudy.site[].display", data.site?.map((site: any) => site.display).join(" | ")],
+  ];
+}
+
+function cdiscMappings(data: any): Array<[string, string, unknown, unknown]> {
+  const labels: Record<string, string> = {
+    TITLE: "Study title", SPONSOR: "Sponsor", TRT: "Intervention type", PHASE: "Study phase",
+    PLANNED: "Target enrollment", ACTUAL: "Current enrollment", STATUS: "Study status",
+  };
+  return (data.records || []).map((record: any) => [labels[record.TSPARMCD] || "Study field", `TS.${record.TSPARMCD}`, record.TSVAL, record.STUDYID]);
+}
+
+function previewValidation(data: any, kind: StandardsPreviewKind): Array<[string, boolean]> {
+  if (kind === "fhir") {
+    return [
+      ["Resource type is ResearchStudy", data.resourceType === "ResearchStudy"],
+      ["Resource identifier is present", Boolean(data.id)],
+      ["Official protocol identifier is present", Boolean(data.identifier?.[0]?.value)],
+      ["Title and status are present", Boolean(data.title && data.status)],
+      ["Site array is structurally present", Array.isArray(data.site)],
+    ];
+  }
+  const records = data.records || [];
+  return [
+    ["Domain is TS (Trial Summary)", data.dataset === "TS"],
+    ["Standard label is present", Boolean(data.standard)],
+    ["At least one TS record is present", records.length > 0],
+    ["Every record has STUDYID, TSPARMCD and TSVAL", records.every((record: any) => record.STUDYID && record.TSPARMCD && record.TSVAL !== undefined)],
+    ["All TS records share one STUDYID", new Set(records.map((record: any) => record.STUDYID)).size <= 1],
+  ];
+}
+
+/* ── Standards preview (uses existing FHIR / CDISC endpoint payloads) ───── */
+function InteropModal({ data, kind, onClose }: { data: any; kind: StandardsPreviewKind; onClose: () => void }) {
+  const isFhir = kind === "fhir";
+  const resourceName = isFhir ? "HL7 FHIR R4 · ResearchStudy" : "CDISC SDTM v3.3 · TS (Trial Summary)";
+  const mappings = isFhir ? fhirMappings(data) : cdiscMappings(data);
+  const validation = previewValidation(data, kind);
+  const validCount = validation.filter(([, valid]) => valid).length;
+  const csv = isFhir
+    ? ["CTMS field,Standard path,Mapped value", ...mappings.map(row => row.map(csvCell).join(","))].join("\n")
+    : ["STUDYID,TSPARMCD,TSVAL", ...(data.records || []).map((record: any) => [record.STUDYID, record.TSPARMCD, record.TSVAL].map(csvCell).join(","))].join("\n");
+  const filenameBase = isFhir ? "research-study" : "sdtm-ts";
+
   return (
     <div className="ctms-modal-overlay">
-      <div className="ctms-modal max-w-3xl max-h-[85vh] flex flex-col">
+      <div className="ctms-modal max-w-5xl max-h-[85vh] flex flex-col">
         <div className="ctms-modal-header">
           <div>
             <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-              <Code className="w-4 h-4 text-[#1e3a5f]" /> {title}
+              <Code className="w-4 h-4 text-[#1e3a5f]" /> Standards Preview · {resourceName}
             </h3>
-            <p className="text-[10px] text-slate-400 mt-0.5 italic">Architecture roadmap preview — not a live regulatory export. Synthetic data only.</p>
+            <p className="text-[10px] text-slate-400 mt-0.5 italic">Mapped from the current study payload · structural preview only · synthetic data</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Close"><XCircle className="w-4 h-4" /></button>
         </div>
-        <div className="overflow-y-auto flex-1 p-5">
-          <pre className="text-[11px] font-mono text-slate-700 bg-slate-50 border border-slate-200 rounded p-4 overflow-x-auto whitespace-pre-wrap">
-            {JSON.stringify(data, null, 2)}
-          </pre>
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <section className="lg:col-span-2 border border-slate-200 rounded-md overflow-hidden">
+              <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center gap-2"><Table2 className="w-3.5 h-3.5 text-[#1e3a5f]" /><h4 className="text-xs font-semibold text-slate-800">CTMS → {isFhir ? "ResearchStudy" : "SDTM TS"} field mapping</h4></div>
+              <div className="overflow-x-auto"><table className="ctms-table"><thead><tr><th>CTMS field</th><th>{isFhir ? "FHIR path" : "CDISC variable"}</th><th>Mapped value</th></tr></thead><tbody>
+                {mappings.map((row, index) => <tr key={index}><td className="text-[11px]">{row[0]}</td><td className="font-mono text-[10px] text-[#1e3a5f]">{row[1]}</td><td className="text-[11px] max-w-[320px] truncate" title={String(row[2] ?? "")}>{row[2] ? String(row[2]) : "—"}</td></tr>)}
+              </tbody></table></div>
+            </section>
+            <section className="border border-slate-200 rounded-md overflow-hidden">
+              <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between"><h4 className="text-xs font-semibold text-slate-800">Basic structural checks</h4><span className={validCount === validation.length ? "ctms-badge-success" : "ctms-badge-warning"}>{validCount}/{validation.length} pass</span></div>
+              <div className="divide-y divide-slate-100">{validation.map(([label, valid]) => <div key={String(label)} className="px-3 py-2 flex items-start gap-2 text-[11px]"><CheckCircle2 className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${valid ? "text-green-600" : "text-amber-600"}`} /><span className={valid ? "text-slate-700" : "text-amber-800"}>{label}</span></div>)}</div>
+            </section>
+          </div>
+          <details className="border border-slate-200 rounded-md"><summary className="px-3 py-2 cursor-pointer text-xs font-semibold text-slate-700">View source JSON</summary><pre className="border-t border-slate-200 text-[10px] font-mono text-slate-700 bg-slate-50 p-3 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre></details>
         </div>
         <div className="ctms-modal-footer">
+          <button onClick={() => downloadPreview(`${filenameBase}.json`, JSON.stringify(data, null, 2), "application/json")} className="ctms-btn-secondary text-xs"><FileJson className="w-3.5 h-3.5" /> Download JSON</button>
+          <button onClick={() => downloadPreview(`${filenameBase}-mapping.csv`, csv, "text/csv;charset=utf-8")} className="ctms-btn-secondary text-xs"><Download className="w-3.5 h-3.5" /> Download CSV</button>
           <button onClick={onClose} className="ctms-btn-secondary">Close Preview</button>
         </div>
       </div>
@@ -68,7 +148,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
   const [termResult, setTermResult]       = useState<any | null>(null);
   const [termLoading, setTermLoading]     = useState(false);
   const [interopData, setInteropData]     = useState<any | null>(null);
-  const [interopTitle, setInteropTitle]   = useState("");
+  const [interopKind, setInteropKind]     = useState<StandardsPreviewKind>("fhir");
   const [errorMsg, setErrorMsg]           = useState("");
   const [successMsg, setSuccessMsg]       = useState("");
 
@@ -105,11 +185,11 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
   useEffect(() => { handleSuggestTerminology("Aruchi"); }, []);
 
   const handleExportFHIR = async () => {
-    try { const d = await fetchAPI(`/compliance/studies/${activeStudyId}/fhir`); setInteropData(d); setInteropTitle("HL7 FHIR R4 ResearchStudy Resource — Architecture Roadmap Preview"); }
+    try { const d = await fetchAPI(`/compliance/studies/${activeStudyId}/fhir`); setInteropData(d); setInteropKind("fhir"); }
     catch (err: any) { setErrorMsg(err.message || "Could not generate the FHIR preview."); }
   };
   const handleExportCDISC = async () => {
-    try { const d = await fetchAPI(`/compliance/studies/${activeStudyId}/cdisc`); setInteropData(d); setInteropTitle("CDISC SDTM Trial Summary Dataset — Architecture Roadmap Preview"); }
+    try { const d = await fetchAPI(`/compliance/studies/${activeStudyId}/cdisc`); setInteropData(d); setInteropKind("cdisc"); }
     catch (err: any) { setErrorMsg(err.message || "Could not generate the CDISC preview."); }
   };
 
@@ -346,7 +426,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ studies, selecte
         </div>
       </div>
 
-      {interopData && <InteropModal data={interopData} title={interopTitle} onClose={() => setInteropData(null)} />}
+      {interopData && <InteropModal data={interopData} kind={interopKind} onClose={() => setInteropData(null)} />}
     </div>
   );
 };
