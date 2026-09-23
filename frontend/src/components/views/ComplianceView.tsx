@@ -38,46 +38,44 @@ function downloadPreview(filename: string, content: string, mimeType: string) {
   URL.revokeObjectURL(url);
 }
 
-function fhirMappings(data: any): Array<[string, string, unknown]> {
-  return [
-    ["Study ID", "ResearchStudy.id", data.id],
-    ["Protocol number", "ResearchStudy.identifier[official].value", data.identifier?.[0]?.value],
-    ["Study title", "ResearchStudy.title", data.title],
-    ["Study status", "ResearchStudy.status", data.status],
-    ["Study type", "ResearchStudy.category[0].coding[0].code", data.category?.[0]?.coding?.[0]?.code],
-    ["Intervention type", "ResearchStudy.focus[0].text", data.focus?.[0]?.text],
-    ["Principal investigator", "ResearchStudy.principalInvestigator.display", data.principalInvestigator?.display],
-    ["Sponsor", "ResearchStudy.sponsor.display", data.sponsor?.display],
-    ["Target / actual enrollment", "ResearchStudy.enrollment[0].display", data.enrollment?.[0]?.display],
-    ["Study sites", "ResearchStudy.site[].display", data.site?.map((site: any) => site.display).join(" | ")],
-  ];
+function mappingStatusBadge(status: string) {
+  if (!status) return null;
+  if (status === "Mapped") return <span className="ctms-badge-success">Mapped</span>;
+  if (status.startsWith("Mapped (")) return <span className="ctms-badge-warning">Text only</span>;
+  if (status.startsWith("Unmapped")) return <span className="ctms-badge-warning">Unmapped</span>;
+  if (status.startsWith("Prototype/display-only")) return <span className="ctms-badge-info">Display ref</span>;
+  if (status.startsWith("Not directly")) return <span className="ctms-badge-neutral">No R4 element</span>;
+  return <span className="ctms-badge-neutral">{status.slice(0, 18)}…</span>;
 }
 
-function cdiscMappings(data: any): Array<[string, string, unknown, unknown]> {
-  const labels: Record<string, string> = {
-    TITLE: "Study title", SPONSOR: "Sponsor", TRT: "Intervention type", PHASE: "Study phase",
-    PLANNED: "Target enrollment", ACTUAL: "Current enrollment", STATUS: "Study status",
-  };
-  return (data.records || []).map((record: any) => [labels[record.TSPARMCD] || "Study field", `TS.${record.TSPARMCD}`, record.TSVAL, record.STUDYID]);
-}
-
-function previewValidation(data: any, kind: StandardsPreviewKind): Array<[string, boolean]> {
+function previewValidation(resource: any, kind: StandardsPreviewKind): Array<[string, boolean]> {
   if (kind === "fhir") {
+    const VALID_R4_STATUSES = [
+      "active", "in-review", "approved",
+      "temporarily-closed-to-accrual-and-intervention",
+      "completed", "closed-to-accrual-and-intervention",
+    ];
     return [
-      ["Resource type is ResearchStudy", data.resourceType === "ResearchStudy"],
-      ["Resource identifier is present", Boolean(data.id)],
-      ["Official protocol identifier is present", Boolean(data.identifier?.[0]?.value)],
-      ["Title and status are present", Boolean(data.title && data.status)],
-      ["Site array is structurally present", Array.isArray(data.site)],
+      ["Resource type is ResearchStudy", resource?.resourceType === "ResearchStudy"],
+      ["Resource id is present", Boolean(resource?.id)],
+      ["Official protocol identifier is present", Boolean(resource?.identifier?.[0]?.value)],
+      ["Title is present", Boolean(resource?.title)],
+      ["Status is a valid R4 code (when present)", resource?.status === undefined || VALID_R4_STATUSES.includes(resource?.status ?? "")],
+      ["Enrollment count not misused as Reference(Group)", !resource?.enrollment],
+      ["Site entries use display-only references (no fabricated IDs)", !resource?.site || (resource.site as any[]).every((s: any) => s.display && !s.reference)],
     ];
   }
-  const records = data.records || [];
+  const records: any[] = resource?.records ?? [];
+  const tsseqs = records.map((r: any) => r.TSSEQ);
   return [
-    ["Domain is TS (Trial Summary)", data.dataset === "TS"],
-    ["Standard label is present", Boolean(data.standard)],
-    ["At least one TS record is present", records.length > 0],
-    ["Every record has STUDYID, TSPARMCD and TSVAL", records.every((record: any) => record.STUDYID && record.TSPARMCD && record.TSVAL !== undefined)],
-    ["All TS records share one STUDYID", new Set(records.map((record: any) => record.STUDYID)).size <= 1],
+    ["Every record has STUDYID", records.length > 0 && records.every((r: any) => Boolean(r.STUDYID))],
+    ["Every record has DOMAIN = TS", records.length > 0 && records.every((r: any) => r.DOMAIN === "TS")],
+    ["Every record has TSSEQ", records.length > 0 && records.every((r: any) => r.TSSEQ !== undefined)],
+    ["Every record has TSPARMCD", records.length > 0 && records.every((r: any) => Boolean(r.TSPARMCD))],
+    ["Every record has TSPARM", records.length > 0 && records.every((r: any) => Boolean(r.TSPARM))],
+    ["Every record has TSVAL", records.length > 0 && records.every((r: any) => r.TSVAL !== undefined && r.TSVAL !== null)],
+    ["TSSEQ values are unique within the dataset", tsseqs.length > 0 && new Set(tsseqs).size === tsseqs.length],
+    ["All records share one STUDYID", records.length > 0 && new Set(records.map((r: any) => r.STUDYID)).size <= 1],
   ];
 }
 
@@ -85,12 +83,31 @@ function previewValidation(data: any, kind: StandardsPreviewKind): Array<[string
 function InteropModal({ data, kind, onClose }: { data: any; kind: StandardsPreviewKind; onClose: () => void }) {
   const isFhir = kind === "fhir";
   const resourceName = isFhir ? "HL7 FHIR R4 · ResearchStudy" : "CDISC SDTM v3.3 · TS (Trial Summary)";
-  const mappings = isFhir ? fhirMappings(data) : cdiscMappings(data);
-  const validation = previewValidation(data, kind);
-  const validCount = validation.filter(([, valid]) => valid).length;
+
+  // FHIR: backend returns { resource, mapping_metadata }
+  // CDISC: backend returns { dataset, standard, records, mapping_metadata, unmapped_source_fields }
+  const fhirResource: any = isFhir ? (data.resource ?? {}) : {};
+  const fhirMeta: any[] = isFhir ? (data.mapping_metadata ?? []) : [];
+  const cdiscRecords: any[] = !isFhir ? (data.records ?? []) : [];
+
+  const validation = previewValidation(isFhir ? fhirResource : data, kind);
+  const validCount = validation.filter(([, v]) => v).length;
+
+  // CSV
   const csv = isFhir
-    ? ["CTMS field,Standard path,Mapped value", ...mappings.map(row => row.map(csvCell).join(","))].join("\n")
-    : ["STUDYID,TSPARMCD,TSVAL", ...(data.records || []).map((record: any) => [record.STUDYID, record.TSPARMCD, record.TSVAL].map(csvCell).join(","))].join("\n");
+    ? [
+        "CTMS field,FHIR path,CTMS value,Mapped value,Mapping status",
+        ...fhirMeta.map((r: any) =>
+          [r.source_field, r.fhir_path, r.ctms_value ?? "", r.mapped_value ?? "", r.mapping_status].map(csvCell).join(",")
+        ),
+      ].join("\n")
+    : [
+        "STUDYID,DOMAIN,TSSEQ,TSPARMCD,TSPARM,TSVAL",
+        ...cdiscRecords.map((r: any) =>
+          [r.STUDYID, r.DOMAIN, r.TSSEQ, r.TSPARMCD, r.TSPARM, r.TSVAL].map(csvCell).join(",")
+        ),
+      ].join("\n");
+
   const filenameBase = isFhir ? "research-study" : "sdtm-ts";
 
   return (
@@ -99,26 +116,94 @@ function InteropModal({ data, kind, onClose }: { data: any; kind: StandardsPrevi
         <div className="ctms-modal-header">
           <div>
             <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-              <Code className="w-4 h-4 text-[#1e3a5f]" /> Standards Preview · {resourceName}
+              <Code className="w-4 h-4 text-[#1e3a5f]" /> Sample Mapping Preview · {resourceName}
             </h3>
-            <p className="text-[10px] text-slate-400 mt-0.5 italic">Mapped from the current study payload · structural preview only · synthetic data</p>
+            <p className="text-[10px] text-slate-400 mt-0.5 italic">
+              {isFhir
+                ? "FHIR R4 structural checks · prototype/display-only references · sample mapping only"
+                : "CDISC SDTM TS structural checks · sample mapping · not a validated submission dataset"}
+            </p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Close"><XCircle className="w-4 h-4" /></button>
         </div>
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Mapping table */}
             <section className="lg:col-span-2 border border-slate-200 rounded-md overflow-hidden">
-              <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center gap-2"><Table2 className="w-3.5 h-3.5 text-[#1e3a5f]" /><h4 className="text-xs font-semibold text-slate-800">CTMS → {isFhir ? "ResearchStudy" : "SDTM TS"} field mapping</h4></div>
-              <div className="overflow-x-auto"><table className="ctms-table"><thead><tr><th>CTMS field</th><th>{isFhir ? "FHIR path" : "CDISC variable"}</th><th>Mapped value</th></tr></thead><tbody>
-                {mappings.map((row, index) => <tr key={index}><td className="text-[11px]">{row[0]}</td><td className="font-mono text-[10px] text-[#1e3a5f]">{row[1]}</td><td className="text-[11px] max-w-[320px] truncate" title={String(row[2] ?? "")}>{row[2] ? String(row[2]) : "—"}</td></tr>)}
-              </tbody></table></div>
+              <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
+                <Table2 className="w-3.5 h-3.5 text-[#1e3a5f]" />
+                <h4 className="text-xs font-semibold text-slate-800">CTMS → {isFhir ? "ResearchStudy" : "SDTM TS"} field mapping</h4>
+              </div>
+              <div className="overflow-x-auto">
+                {isFhir ? (
+                  <table className="ctms-table">
+                    <thead><tr><th>CTMS field</th><th>FHIR path</th><th>Mapped value</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {fhirMeta.map((r: any, i: number) => (
+                        <tr key={i}>
+                          <td className="text-[11px]">{r.source_field}</td>
+                          <td className="font-mono text-[10px] text-[#1e3a5f]">{r.fhir_path}</td>
+                          <td className="text-[11px] max-w-[200px] truncate" title={String(r.mapped_value ?? r.ctms_value ?? "")}>
+                            {r.mapped_value != null ? String(r.mapped_value) : <span className="text-slate-400 italic">{r.ctms_value ?? "—"}</span>}
+                          </td>
+                          <td className="text-[10px]">{mappingStatusBadge(r.mapping_status)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <>
+                    <table className="ctms-table">
+                      <thead><tr><th>STUDYID</th><th>DOMAIN</th><th>TSSEQ</th><th>TSPARMCD</th><th>TSPARM</th><th>TSVAL</th></tr></thead>
+                      <tbody>
+                        {cdiscRecords.map((r: any, i: number) => (
+                          <tr key={i}>
+                            <td className="font-mono text-[10px]">{r.STUDYID}</td>
+                            <td className="font-mono text-[10px]">{r.DOMAIN}</td>
+                            <td className="font-mono text-[10px]">{r.TSSEQ}</td>
+                            <td className="font-mono text-[10px] text-[#1e3a5f]">{r.TSPARMCD}</td>
+                            <td className="text-[11px]">{r.TSPARM}</td>
+                            <td className="text-[11px] max-w-[180px] truncate" title={String(r.TSVAL)}>{r.TSVAL}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {data.unmapped_source_fields?.length > 0 && (
+                      <div className="px-3 py-2 border-t border-slate-100 bg-amber-50 text-[10px] text-amber-800">
+                        <span className="font-semibold">No defensible TS parameter — not mapped:</span>{" "}
+                        {(data.unmapped_source_fields as string[]).join(", ")}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </section>
+
+            {/* Structural checks */}
             <section className="border border-slate-200 rounded-md overflow-hidden">
-              <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between"><h4 className="text-xs font-semibold text-slate-800">Basic structural checks</h4><span className={validCount === validation.length ? "ctms-badge-success" : "ctms-badge-warning"}>{validCount}/{validation.length} pass</span></div>
-              <div className="divide-y divide-slate-100">{validation.map(([label, valid]) => <div key={String(label)} className="px-3 py-2 flex items-start gap-2 text-[11px]"><CheckCircle2 className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${valid ? "text-green-600" : "text-amber-600"}`} /><span className={valid ? "text-slate-700" : "text-amber-800"}>{label}</span></div>)}</div>
+              <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-slate-800">
+                  {isFhir ? "FHIR R4 structural checks" : "CDISC SDTM TS structural checks"}
+                </h4>
+                <span className={validCount === validation.length ? "ctms-badge-success" : "ctms-badge-warning"}>{validCount}/{validation.length} pass</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {validation.map(([label, valid]) => (
+                  <div key={String(label)} className="px-3 py-2 flex items-start gap-2 text-[11px]">
+                    <CheckCircle2 className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${valid ? "text-green-600" : "text-amber-600"}`} />
+                    <span className={valid ? "text-slate-700" : "text-amber-800"}>{label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="px-3 py-2 border-t border-slate-100 bg-slate-50 text-[10px] text-slate-400 italic">
+                {isFhir ? "Structural checks only — not a conformance claim" : "Structural checks only — not a CDISC submission validation"}
+              </div>
             </section>
           </div>
-          <details className="border border-slate-200 rounded-md"><summary className="px-3 py-2 cursor-pointer text-xs font-semibold text-slate-700">View source JSON</summary><pre className="border-t border-slate-200 text-[10px] font-mono text-slate-700 bg-slate-50 p-3 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre></details>
+          <details className="border border-slate-200 rounded-md">
+            <summary className="px-3 py-2 cursor-pointer text-xs font-semibold text-slate-700">View source JSON</summary>
+            <pre className="border-t border-slate-200 text-[10px] font-mono text-slate-700 bg-slate-50 p-3 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
+          </details>
         </div>
         <div className="ctms-modal-footer">
           <button onClick={() => downloadPreview(`${filenameBase}.json`, JSON.stringify(data, null, 2), "application/json")} className="ctms-btn-secondary text-xs"><FileJson className="w-3.5 h-3.5" /> Download JSON</button>
