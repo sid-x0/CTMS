@@ -73,9 +73,22 @@ class TerminologyService:
     @staticmethod
     def export_fhir_research_study(study: Study, sites: List[Site]) -> Dict[str, Any]:
         """
-        Exports an HL7 FHIR R4 ResearchStudy resource object.
+        Creates a FHIR R4 ResearchStudy standards preview with mapping metadata.
+        The envelope is intentionally not a FHIR resource; ``resource`` contains
+        the generated ResearchStudy representation and mapping_metadata records
+        how CTMS values were treated.
         """
-        return {
+        status_mapping = {
+            "Pending IEC Approval": "in-review",
+            "IEC Approved": "approved",
+            "Recruiting": "active",
+            "Active": "active",
+            "Suspended": "temporarily-closed-to-accrual-and-intervention",
+            "Completed": "completed",
+            "Closed": "closed-to-accrual-and-intervention",
+        }
+        fhir_status = status_mapping.get(study.status)
+        resource: Dict[str, Any] = {
             "resourceType": "ResearchStudy",
             "id": f"aiia-study-{study.id}",
             "identifier": [
@@ -86,15 +99,9 @@ class TerminologyService:
                 }
             ],
             "title": study.title,
-            "status": study.status.lower().replace(" ", "-"),
             "category": [
                 {
-                    "coding": [
-                        {
-                            "system": "http://hl7.org/fhir/research-study-category",
-                            "code": study.study_type.lower()
-                        }
-                    ]
+                    "text": study.study_type
                 }
             ],
             "focus": [
@@ -108,11 +115,6 @@ class TerminologyService:
             "sponsor": {
                 "display": study.sponsor
             },
-            "enrollment": [
-                {
-                    "display": f"Target: {study.target_enrollment}, Actual: {study.current_enrollment}"
-                }
-            ],
             "site": [
                 {
                     "display": f"{s.site_code} - {s.site_name} ({s.location})"
@@ -120,22 +122,56 @@ class TerminologyService:
                 for s in sites
             ]
         }
+        if fhir_status:
+            resource["status"] = fhir_status
+
+        return {
+            "resource": resource,
+            "mapping_metadata": [
+                {"source_field": "Study ID", "target_path": "ResearchStudy.id", "value": resource["id"], "mapping_status": "Mapped"},
+                {"source_field": "Protocol number", "target_path": "ResearchStudy.identifier[official].value", "value": study.protocol_number, "mapping_status": "Mapped"},
+                {"source_field": "Study title", "target_path": "ResearchStudy.title", "value": study.title, "mapping_status": "Mapped"},
+                {"source_field": "Study status", "target_path": "ResearchStudy.status", "value": study.status, "mapped_value": fhir_status, "mapping_status": "Mapped" if fhir_status else "Unmapped"},
+                {"source_field": "Study type", "target_path": "ResearchStudy.category[0].text", "value": study.study_type, "mapping_status": "Mapped (text only; terminology not validated)"},
+                {"source_field": "Intervention type", "target_path": "ResearchStudy.focus[0].text", "value": study.intervention_type, "mapping_status": "Mapped (text only; terminology not validated)"},
+                {"source_field": "Principal investigator", "target_path": "ResearchStudy.principalInvestigator.display", "value": study.principal_investigator, "mapping_status": "Prototype/display-only reference"},
+                {"source_field": "Sponsor", "target_path": "ResearchStudy.sponsor.display", "value": study.sponsor, "mapping_status": "Prototype/display-only reference"},
+                {"source_field": "Target / actual enrollment", "target_path": "No direct ResearchStudy R4 element", "value": f"Target: {study.target_enrollment}, Actual: {study.current_enrollment}", "mapping_status": "No direct FHIR R4 element"},
+                {"source_field": "Study sites", "target_path": "ResearchStudy.site[].display", "value": "; ".join(site["display"] for site in resource["site"]), "mapping_status": "Prototype/display-only reference"},
+            ],
+        }
 
     @staticmethod
     def export_cdisc_sdtm(study: Study) -> Dict[str, Any]:
         """
-        Exports a CDISC SDTM TS (Trial Summary) dataset JSON structure.
+        Creates a structurally shaped CDISC SDTM TS standards preview.
+        Only CTMS fields with a defensible TS parameter mapping are emitted.
         """
+        source_mappings = [
+            ("Study title", "TITLE", "Trial Title", study.title),
+            ("Sponsor", "SPONSOR", "Clinical Study Sponsor", study.sponsor),
+            ("Target enrollment", "PLANSUB", "Planned Number of Subjects", str(study.target_enrollment)),
+        ]
+        records = [
+            {
+                "STUDYID": study.protocol_number,
+                "DOMAIN": "TS",
+                "TSSEQ": sequence,
+                "TSPARMCD": parameter_code,
+                "TSPARM": parameter_name,
+                "TSVAL": value,
+            }
+            for sequence, (_, parameter_code, parameter_name, value) in enumerate(source_mappings, start=1)
+        ]
         return {
             "dataset": "TS",
             "standard": "CDISC SDTM v3.3",
-            "records": [
-                {"STUDYID": study.protocol_number, "TSPARMCD": "TITLE", "TSVAL": study.title},
-                {"STUDYID": study.protocol_number, "TSPARMCD": "SPONSOR", "TSVAL": study.sponsor},
-                {"STUDYID": study.protocol_number, "TSPARMCD": "TRT", "TSVAL": study.intervention_type},
-                {"STUDYID": study.protocol_number, "TSPARMCD": "PHASE", "TSVAL": study.phase},
-                {"STUDYID": study.protocol_number, "TSPARMCD": "PLANNED", "TSVAL": str(study.target_enrollment)},
-                {"STUDYID": study.protocol_number, "TSPARMCD": "ACTUAL", "TSVAL": str(study.current_enrollment)},
-                {"STUDYID": study.protocol_number, "TSPARMCD": "STATUS", "TSVAL": study.status}
-            ]
+            "records": records,
+            "mapping_metadata": [
+                {"source_field": source_field, "tsparmcd": parameter_code, "tsparm": parameter_name, "mapping_status": "Mapped"}
+                for source_field, parameter_code, parameter_name, _ in source_mappings
+            ],
+            "unmapped_source_fields": [
+                "Intervention type", "Study phase", "Current enrollment", "Study status",
+            ],
         }
