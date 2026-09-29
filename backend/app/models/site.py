@@ -17,8 +17,8 @@ class Site(Base):
     status = Column(String(50), nullable=False, default="Active")  # Pending, Active, Suspended, Closed
     target_enrollment = Column(Integer, nullable=False, default=50)
     current_enrollment = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     study = relationship("Study", back_populates="sites")
     participants = relationship("Participant", back_populates="site", cascade="all, delete-orphan")

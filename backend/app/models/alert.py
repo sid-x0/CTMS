@@ -15,7 +15,7 @@ class Alert(Base):
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
     is_resolved = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     study = relationship("Study", back_populates="alerts")
     site = relationship("Site", foreign_keys=[site_id])

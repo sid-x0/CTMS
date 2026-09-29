@@ -39,8 +39,8 @@ class Study(Base):
     protocol_deviations_count = Column(Integer, default=0)
     open_data_queries_count = Column(Integer, default=0)
     
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     sites = relationship("Site", back_populates="study", cascade="all, delete-orphan")
     participants = relationship("Participant", back_populates="study", cascade="all, delete-orphan")

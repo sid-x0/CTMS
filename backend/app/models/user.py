@@ -22,5 +22,5 @@ class User(Base):
     role = Column(String(100), nullable=False, default=UserRole.STUDY_COORDINATOR.value)
     organization = Column(String(255), nullable=False, default="All India Institute of Ayurveda (AIIA)")
     active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

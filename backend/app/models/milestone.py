@@ -22,7 +22,7 @@ class StudyMilestone(Base):
     actual_date = Column(Date, nullable=True)
     status = Column(String(50), nullable=False, default=MilestoneStatus.PENDING.value)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     study = relationship("Study", back_populates="milestones")
