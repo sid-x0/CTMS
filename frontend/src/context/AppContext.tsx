@@ -74,6 +74,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user?.user_role, user?.access_token]);
 
   const navigateTab = (tab: string, studyId?: number) => {
+    // The Studies sidebar item is the directory entry point, not a scoped
+    // workspace. Clear any previously selected study before navigating there.
+    if (tab === "studies" && studyId === undefined) {
+      setSelectedStudyId(undefined);
+      router.push("/studies");
+      return;
+    }
+
     const targetStudyId = studyId !== undefined ? studyId : selectedStudyId;
     if (studyId !== undefined) {
       setSelectedStudyId(studyId);
